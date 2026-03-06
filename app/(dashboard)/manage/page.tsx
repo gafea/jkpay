@@ -1,7 +1,9 @@
 import { ensureOwnerAccess } from '@/lib/access';
 import { prisma } from '@/lib/prisma';
-import { PurchaseChannel, Weekday } from '@prisma/client';
 import { ManageGrid } from './manage-grid';
+
+const WEEKDAY_OPTIONS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+const CHANNEL_OPTIONS = ['ONLINE_PURCHASE', 'OFFLINE_PURCHASE', 'FOREIGN_CURRENCY'];
 
 export default async function ManagePage() {
   await ensureOwnerAccess();
@@ -23,24 +25,27 @@ export default async function ManagePage() {
       },
     }),
   ]);
+  type FriendRow = (typeof friends)[number];
+  type CardRow = (typeof cards)[number];
+  type BenefitRow = (typeof benefits)[number];
 
   return (
     <ManageGrid
-      friends={friends.map((friend) => ({
+      friends={friends.map((friend: FriendRow) => ({
         id: friend.id,
         email: friend.friend.email,
-        monthlyLimit: friend.monthlyLimit?.toString() ?? '',
+        nickname: friend.nickname ?? '',
         activeUntil: friend.activeUntil ? friend.activeUntil.toISOString().slice(0, 10) : '',
+        isDisabled: friend.isDisabled,
       }))}
-      cards={cards.map((card) => ({
+      cards={cards.map((card: CardRow) => ({
         id: card.id,
         name: card.name,
-        expiryDate: card.expiryDate?.toISOString().slice(0, 10) ?? '',
-        monthlyLimit: card.monthlyLimit?.toString() ?? '',
         fcyFee: card.fcyFee?.toString() ?? '',
         isCredit: card.isCredit,
+        isDisabled: card.isDisabled,
       }))}
-      benefits={benefits.map((benefit) => ({
+      benefits={benefits.map((benefit: BenefitRow) => ({
         id: benefit.id,
         categoryName: benefit.categoryName,
         expiryDate: benefit.expiryDate?.toISOString().slice(0, 10) ?? '',
@@ -53,10 +58,10 @@ export default async function ManagePage() {
         maximumSpending: benefit.maximumSpending?.toString() ?? '',
         applicableWeekdays: benefit.applicableWeekdays,
         purchaseChannel: benefit.purchaseChannel || '',
-        linkedCardIds: benefit.cardLinks.map((link) => link.cardId),
+        linkedCardIds: benefit.cardLinks.map((link: BenefitRow['cardLinks'][number]) => link.cardId),
       }))}
-      weekdayOptions={Object.values(Weekday)}
-      channelOptions={Object.values(PurchaseChannel)}
+      weekdayOptions={WEEKDAY_OPTIONS}
+      channelOptions={CHANNEL_OPTIONS}
     />
   );
 }

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { ClipboardList, Search, History, Settings, User, ArrowLeftRight } from 'lucide-react';
 
 type SidebarProps = {
+  userName: string;
   userEmail: string;
   isOwner: boolean;
 };
@@ -18,7 +19,7 @@ type TabItem = {
   visible: boolean;
 };
 
-export const Sidebar = ({ userEmail, isOwner }: SidebarProps) => {
+export const Sidebar = ({ userName, userEmail, isOwner }: SidebarProps) => {
   const pathname = usePathname();
 
   const items: TabItem[] = [
@@ -77,13 +78,41 @@ export const Sidebar = ({ userEmail, isOwner }: SidebarProps) => {
         })}
       </nav>
 
-      {/* User email — hidden on mobile */}
+      <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 lg:hidden">
+        <div className="flex min-w-0 items-center gap-2 overflow-hidden">
+          <User className={`h-3.5 w-3.5 shrink-0 ${isOwner ? 'text-slate-400 fill-slate-400' : 'text-slate-400'}`} />
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-slate-700" title={userName || userEmail}>
+              {userName || (isOwner ? 'Owner' : 'User')}
+            </p>
+            <p className="truncate text-[11px] text-slate-500" title={userEmail}>
+              {isOwner ? 'Owner: ' : ''}{userEmail}
+            </p>
+          </div>
+        </div>
+        <form action={reauthenticate}>
+          <button
+            type="submit"
+            className="ml-2 flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
+            title="Switch user"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+          </button>
+        </form>
+      </div>
+
+      {/* User email — desktop */}
       <div className="mt-auto hidden items-center justify-between border-t border-slate-100 px-4 py-3 lg:flex">
         <div className="flex items-center gap-2 overflow-hidden">
-          <User className={`h-3.5 w-3.5 shrink-0 ${isOwner ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`} />
-          <span className={`truncate text-xs ${isOwner ? 'text-amber-500' : 'text-slate-500'}`} title={userEmail}>
-            {isOwner && 'Owner: '}{userEmail}
-          </span>
+          <User className={`h-3.5 w-3.5 shrink-0 ${isOwner ? 'text-slate-400 fill-slate-400' : 'text-slate-400'}`} />
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-slate-700" title={userName || userEmail}>
+              {userName || (isOwner ? 'Owner' : 'User')}
+            </p>
+            <p className="truncate text-[11px] text-slate-500" title={userEmail}>
+              {isOwner ? 'Owner: ' : ''}{userEmail}
+            </p>
+          </div>
         </div>
         <form action={reauthenticate}>
           <button

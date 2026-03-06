@@ -22,7 +22,7 @@ model FriendAccess {
   id                String    @id @default(cuid())
   ownerId           String
   friendId          String
-  monthlyLimit      Decimal?  @db.Decimal(12, 2)
+  nickname          String?
   activeUntil       DateTime?
   isDisabled        Boolean   @default(false)
   createdAt         DateTime  @default(now())
@@ -37,8 +37,6 @@ model FriendAccess {
 model Card {
   id                String        @id @default(cuid())
   name              String
-  expiryDate        DateTime?
-  monthlyLimit      Decimal?      @db.Decimal(12, 2)
   fcyFee            Decimal?      @db.Decimal(5, 2)
   isCredit          Boolean       @default(false)
   isDisabled        Boolean       @default(false)
@@ -55,6 +53,7 @@ model Benefit {
   cashbackAmount     Decimal            @db.Decimal(12, 2)
   usageAvailable     Int?
   usageUsed          Int                @default(0)
+  usageResetAt       DateTime?
   quotaResetsMonthly Boolean            @default(false)
   minimumSpending    Decimal?           @db.Decimal(12, 2)
   maximumSpending    Decimal?           @db.Decimal(12, 2)

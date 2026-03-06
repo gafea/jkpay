@@ -38,6 +38,8 @@ export const saveFriend = async (formData: FormData) => {
   const owner = await ensureOwnerAccess();
   const id = String(formData.get('id') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const nickname = String(formData.get('nickname') ?? '').trim();
+  const isDisabled = formData.get('isDisabled') === 'true';
   if (!email) {
     throw new Error('Friend email is required');
   }
@@ -54,9 +56,9 @@ export const saveFriend = async (formData: FormData) => {
       where: { id },
       data: {
         friendId: friendUser.id,
-        monthlyLimit: toDecimal(formData.get('monthlyLimit')),
+        nickname: nickname || null,
         activeUntil: toDate(formData.get('activeUntil')),
-        isDisabled: false,
+        isDisabled,
       },
     });
   } else {
@@ -68,21 +70,23 @@ export const saveFriend = async (formData: FormData) => {
         },
       },
       update: {
-        monthlyLimit: toDecimal(formData.get('monthlyLimit')),
+        nickname: nickname || null,
         activeUntil: toDate(formData.get('activeUntil')),
-        isDisabled: false,
+        isDisabled,
       },
       create: {
         ownerId: owner.id,
         friendId: friendUser.id,
-        monthlyLimit: toDecimal(formData.get('monthlyLimit')),
+        nickname: nickname || null,
         activeUntil: toDate(formData.get('activeUntil')),
+        isDisabled,
       },
     });
     recordId = created.id;
   }
 
   revalidatePath('/manage');
+  revalidatePath('/browse');
   return { id: recordId };
 };
 
@@ -93,16 +97,16 @@ export const removeFriend = async (formData: FormData) => {
   const id = String(formData.get('id') ?? '');
   await prisma.friendAccess.delete({ where: { id } });
   revalidatePath('/manage');
+  revalidatePath('/browse');
 };
 
 export const saveCard = async (formData: FormData) => {
   await ensureOwnerAccess();
   const id = String(formData.get('id') ?? '').trim();
   const name = String(formData.get('name') ?? '').trim();
-  const expiryDate = toDate(formData.get('expiryDate'));
-  const monthlyLimit = toDecimal(formData.get('monthlyLimit'));
   const fcyFee = toDecimal(formData.get('fcyFee'));
   const isCredit = formData.get('isCredit') === 'true';
+  const isDisabled = formData.get('isDisabled') === 'true';
 
   if (!name) {
     throw new Error('Card name is required');
@@ -114,26 +118,25 @@ export const saveCard = async (formData: FormData) => {
       where: { id },
       data: {
         name,
-        expiryDate,
-        monthlyLimit,
         fcyFee,
         isCredit,
+        isDisabled,
       },
     });
   } else {
     const created = await prisma.card.create({
       data: {
         name,
-        expiryDate,
-        monthlyLimit,
         fcyFee,
         isCredit,
+        isDisabled,
       },
     });
     recordId = created.id;
   }
 
   revalidatePath('/manage');
+  revalidatePath('/browse');
   return { id: recordId };
 };
 
@@ -144,6 +147,7 @@ export const removeCard = async (formData: FormData) => {
   const id = String(formData.get('id') ?? '');
   await prisma.card.delete({ where: { id } });
   revalidatePath('/manage');
+  revalidatePath('/browse');
 };
 
 export const saveBenefit = async (formData: FormData) => {

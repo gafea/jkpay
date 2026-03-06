@@ -41,25 +41,50 @@ export const getCurrentSessionUser = async () => {
 };
 
 export const hasFriendAccess = async (email: string) => {
+  const status = await getFriendAccessStatus(email);
+  return status === 'active';
+};
+
+export const getFriendAccessStatus = async (email: string): Promise<'active' | 'disabled' | 'expired' | 'none'> => {
   const now = new Date();
   const normalizedEmail = normalizeEmail(email);
 
   const user = await prisma.user.findUnique({
     where: { email: normalizedEmail },
     select: {
-      id: true,
       friendOf: {
-        where: {
-          isDisabled: false,
-          OR: [{ activeUntil: null }, { activeUntil: { gte: now } }],
+        select: {
+          isDisabled: true,
+          activeUntil: true,
         },
-        select: { id: true },
-        take: 1,
       },
     },
   });
 
-  return Boolean(user?.friendOf.length);
+  if (!user || user.friendOf.length === 0) {
+    return 'none';
+  }
+
+  const hasActive = user.friendOf.some(
+    (friendAccess) => !friendAccess.isDisabled && (!friendAccess.activeUntil || friendAccess.activeUntil >= now),
+  );
+  if (hasActive) {
+    return 'active';
+  }
+
+  const hasDisabled = user.friendOf.some((friendAccess) => friendAccess.isDisabled);
+  if (hasDisabled) {
+    return 'disabled';
+  }
+
+  const hasExpired = user.friendOf.some(
+    (friendAccess) => Boolean(friendAccess.activeUntil && friendAccess.activeUntil < now),
+  );
+  if (hasExpired) {
+    return 'expired';
+  }
+
+  return 'none';
 };
 
 export const ensureBrowseHistoryAccess = async () => {
@@ -69,8 +94,8 @@ export const ensureBrowseHistoryAccess = async () => {
     return user;
   }
 
-  const canAccess = await hasFriendAccess(user.email);
-  if (!canAccess) {
+  const status = await getFriendAccessStatus(user.email);
+  if (status !== 'active') {
     redirect('/');
   }
 

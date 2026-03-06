@@ -11,7 +11,7 @@ const nextBin = path.join(workspaceRoot, 'node_modules', 'next', 'dist', 'bin', 
 
 const mode = process.argv[2] ?? 'dev';
 const nextCommand = mode === 'start' ? 'start' : 'dev';
-const nextRuntimeArgs = ["--webpack"];
+const nextRuntimeArgs = mode === 'start' ? [] : ['--webpack'];
 
 const envFileCandidates =
   nextCommand === 'dev'

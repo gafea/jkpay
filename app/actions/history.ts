@@ -3,10 +3,12 @@
 import { PurchaseChannel } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { ensureBrowseHistoryAccess } from '@/lib/access';
+import { resetMonthlyBenefitUsage } from '@/lib/benefits';
 import { prisma } from '@/lib/prisma';
 
 export const createBenefitRequest = async (formData: FormData) => {
   const user = await ensureBrowseHistoryAccess();
+  await resetMonthlyBenefitUsage();
   const benefitId = String(formData.get('benefitId') ?? '');
   const amountSpent = Number(formData.get('amountSpent'));
   const purchaseChannel = String(formData.get('purchaseChannel') ?? '') as PurchaseChannel;
@@ -25,4 +27,5 @@ export const createBenefitRequest = async (formData: FormData) => {
   });
 
   revalidatePath('/history');
+  revalidatePath('/browse');
 };

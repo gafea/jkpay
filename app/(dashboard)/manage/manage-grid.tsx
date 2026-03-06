@@ -9,17 +9,17 @@ import { createPortal } from 'react-dom';
 type FriendInput = {
   id: string;
   email: string;
-  monthlyLimit: string;
+  nickname: string;
   activeUntil: string;
+  isDisabled: boolean;
 };
 
 type CardInput = {
   id: string;
   name: string;
-  expiryDate: string;
-  monthlyLimit: string;
   fcyFee: string;
   isCredit: boolean;
+  isDisabled: boolean;
 };
 
 type BenefitInput = {
@@ -56,18 +56,18 @@ const blankFriend = (): Row<FriendInput> => ({
   _key: createKey(),
   id: '',
   email: '',
-  monthlyLimit: '',
+  nickname: '',
   activeUntil: '',
+  isDisabled: false,
 });
 
 const blankCard = (): Row<CardInput> => ({
   _key: createKey(),
   id: '',
   name: '',
-  expiryDate: '',
-  monthlyLimit: '',
   fcyFee: '',
   isCredit: false,
+  isDisabled: false,
 });
 
 const blankBenefit = (): Row<BenefitInput> => ({
@@ -433,16 +433,31 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
   const [friendRows, setFriendRows] = useState<Row<FriendInput>[]>(() => [...withKey(friends), blankFriend()]);
   const [cardRows, setCardRows] = useState<Row<CardInput>[]>(() => [...withKey(cards), blankCard()]);
   const [benefitRows, setBenefitRows] = useState<Row<BenefitInput>[]>(() => [...withKey(benefits), blankBenefit()]);
+  const [savedFriends, setSavedFriends] = useState<FriendInput[]>(friends);
+  const [savedCards, setSavedCards] = useState<CardInput[]>(cards);
+  const [savedBenefits, setSavedBenefits] = useState<BenefitInput[]>(benefits);
 
   // Compute if rows are edited
   const omitKey = <T extends Record<string, any>>(obj: T): Omit<T, '_key'> => {
     const { _key, ...rest } = obj;
     return rest;
   };
+
+  const withoutId = <T extends { id: string }>(row: T) => {
+    const { id: _id, ...rest } = row;
+    return rest;
+  };
+
+  const friendComparable = friendRows.filter(hasFriendData).map(omitKey).map(withoutId);
+  const cardComparable = cardRows.filter(hasCardData).map(omitKey).map(withoutId);
+  const benefitComparable = benefitRows.filter(hasBenefitData).map(omitKey).map(withoutId);
+  const savedFriendsComparable = savedFriends.map(withoutId);
+  const savedCardsComparable = savedCards.map(withoutId);
+  const savedBenefitsComparable = savedBenefits.map(withoutId);
   
-  const isFriendsChanged = JSON.stringify(friendRows.filter(hasFriendData).map(omitKey)) !== JSON.stringify(friends);
-  const isCardsChanged = JSON.stringify(cardRows.filter(hasCardData).map(omitKey)) !== JSON.stringify(cards);
-  const isBenefitsChanged = JSON.stringify(benefitRows.filter(hasBenefitData).map(omitKey)) !== JSON.stringify(benefits);
+  const isFriendsChanged = JSON.stringify(friendComparable) !== JSON.stringify(savedFriendsComparable);
+  const isCardsChanged = JSON.stringify(cardComparable) !== JSON.stringify(savedCardsComparable);
+  const isBenefitsChanged = JSON.stringify(benefitComparable) !== JSON.stringify(savedBenefitsComparable);
 
   const appendIfNeeded = <T,>(rows: Row<T>[], index: number, hasData: (row: T) => boolean, blank: () => Row<T>) => {
     if (index !== rows.length - 1) {
@@ -479,7 +494,13 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     if (!row.email.trim()) return;
     setBusyKey(`friend-save-${row._key}`);
     try {
-      const res = await saveFriend(toFormData([['id', row.id], ['email', row.email], ['monthlyLimit', row.monthlyLimit], ['activeUntil', row.activeUntil]]));
+      const res = await saveFriend(toFormData([
+        ['id', row.id],
+        ['email', row.email],
+        ['nickname', row.nickname],
+        ['activeUntil', row.activeUntil],
+        ['isDisabled', row.isDisabled],
+      ]));
       if (res?.id && !row.id) {
         setFriendRows((c) => c.map((r) => (r._key === row._key ? { ...r, id: res.id } : r)));
       }
@@ -495,10 +516,9 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
       const res = await saveCard(toFormData([
         ['id', row.id], 
         ['name', row.name], 
-        ['expiryDate', row.expiryDate], 
-        ['monthlyLimit', row.monthlyLimit],
         ['fcyFee', row.fcyFee],
-        ['isCredit', row.isCredit]
+        ['isCredit', row.isCredit],
+        ['isDisabled', row.isDisabled],
       ]));
       if (res?.id && !row.id) {
         setCardRows((c) => c.map((r) => (r._key === row._key ? { ...r, id: res.id } : r)));
@@ -547,6 +567,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     setBusyKey('saving-friends');
     try {
       await Promise.all(friendRows.filter(hasFriendData).map(saveFriendRow));
+      setSavedFriends(friendRows.filter(hasFriendData).map(omitKey));
       setSaveStatus(s => ({ ...s, friends: 'success' }));
       setTimeout(() => setSaveStatus(s => ({ ...s, friends: '' })), 2000);
       router.refresh();
@@ -562,6 +583,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     setBusyKey('saving-cards');
     try {
       await Promise.all(cardRows.filter(hasCardData).map(saveCardRow));
+      setSavedCards(cardRows.filter(hasCardData).map(omitKey));
       setSaveStatus(s => ({ ...s, cards: 'success' }));
       setTimeout(() => setSaveStatus(s => ({ ...s, cards: '' })), 2000);
       router.refresh();
@@ -577,6 +599,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     setBusyKey('saving-benefits');
     try {
       await Promise.all(benefitRows.filter(hasBenefitData).map(saveBenefitRow));
+      setSavedBenefits(benefitRows.filter(hasBenefitData).map(omitKey));
       setSaveStatus(s => ({ ...s, benefits: 'success' }));
       setTimeout(() => setSaveStatus(s => ({ ...s, benefits: '' })), 2000);
       router.refresh();
@@ -670,8 +693,9 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
             <thead>
               <tr className="border-b border-slate-200">
                 <th className={thCls}>Email <Req /></th>
-                <th className={thCls}>Monthly Limit</th>
+                <th className={thCls}>Nickname</th>
                 <th className={thCls}>Active Until</th>
+                <th className={thCls}>Disabled</th>
                 <th className={`${thCls} w-10`}></th>
               </tr>
             </thead>
@@ -688,11 +712,9 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                   </td>
                   <td className={cellCls}>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={row.monthlyLimit}
-                      onChange={(e) => onFriendChange(index, { monthlyLimit: e.target.value })}
-                      placeholder="0.00"
+                      value={row.nickname}
+                      onChange={(e) => onFriendChange(index, { nickname: e.target.value })}
+                      placeholder="Display name"
                       className={inputCls}
                     />
                   </td>
@@ -702,6 +724,16 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                       onChange={(val) => onFriendChange(index, { activeUntil: val })}
                       className={`${inputCls}`}
                     />
+                  </td>
+                  <td className={cellCls}>
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={row.isDisabled}
+                        onChange={(e) => onFriendChange(index, { isDisabled: e.target.checked })}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                      />
+                    </div>
                   </td>
                   <td className="border-0 p-1">
                     <TrashBtn onClick={() => removeFriendRow(row)} disabled={busyKey !== ''} hidden={!hasFriendData(row)} />
@@ -741,10 +773,9 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
               <tr className="border-b border-slate-200">
                 <th className={`${thCls} w-7`}></th>
                 <th className={thCls}>Name <Req /></th>
-                <th className={thCls}>Expiry</th>
                 <th className={thCls}>Fx Fee %</th>
                 <th className={thCls}>Credit Card</th>
-                <th className={thCls}>Monthly Limit</th>
+                <th className={thCls}>Disabled</th>
                 <th className={`${thCls} w-10`}></th>
               </tr>
             </thead>
@@ -770,13 +801,6 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                     />
                   </td>
                   <td className={cellCls}>
-                    <DateInput
-                      value={row.expiryDate}
-                      onChange={(val) => onCardChange(index, { expiryDate: val })}
-                      className={`${inputCls}`}
-                    />
-                  </td>
-                  <td className={cellCls}>
                     <input
                       type="number"
                       step="0.01"
@@ -797,14 +821,14 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                     </div>
                   </td>
                   <td className={cellCls}>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={row.monthlyLimit}
-                      onChange={(e) => onCardChange(index, { monthlyLimit: e.target.value })}
-                      placeholder="0.00"
-                      className={inputCls}
-                    />
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={row.isDisabled}
+                        onChange={(e) => onCardChange(index, { isDisabled: e.target.checked })}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                      />
+                    </div>
                   </td>
                   <td className="border-0 p-1">
                     <TrashBtn onClick={() => removeCardRow(row)} disabled={busyKey !== ''} hidden={!hasCardData(row) || isCardLinked(row.id)} />

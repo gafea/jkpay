@@ -1,11 +1,12 @@
 import { auth, signIn } from '@/auth';
 import { getAppBaseUrl } from '@/lib/app-url';
-import { hasFriendAccess, isOwnerEmail } from '@/lib/access';
+import { getFriendAccessStatus, isOwnerEmail } from '@/lib/access';
 import { redirect } from 'next/navigation';
 
 export default async function HomePage() {
   const session = await auth();
   const appBaseUrl = getAppBaseUrl().toString();
+  let accessStatus: 'active' | 'disabled' | 'expired' | 'none' = 'none';
 
   if (session?.user?.email) {
     const email = session.user.email.toLowerCase();
@@ -14,8 +15,8 @@ export default async function HomePage() {
       redirect('/manage');
     }
 
-    const canAccessBrowse = await hasFriendAccess(email);
-    if (canAccessBrowse) {
+    accessStatus = await getFriendAccessStatus(email);
+    if (accessStatus === 'active') {
       redirect('/browse');
     }
   }
@@ -42,7 +43,9 @@ export default async function HomePage() {
           </form>
         ) : (
           <div className="grid gap-2 text-sm text-slate-700">
-            <p>You've signed in, but it seems that you have not been invited yet.</p>
+            {accessStatus === 'disabled' && <p>Your account has been disabled.</p>}
+            {accessStatus === 'expired' && <p>Your account has been expired.</p>}
+            {accessStatus === 'none' && <p>You've signed in, but it seems that you have not been invited yet.</p>}
             <p>Email: {session.user.email}</p>
             <form
               action={async () => {
