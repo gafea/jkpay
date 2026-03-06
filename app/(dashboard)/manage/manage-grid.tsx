@@ -18,6 +18,8 @@ type CardInput = {
   name: string;
   expiryDate: string;
   monthlyLimit: string;
+  fcyFee: string;
+  isCredit: boolean;
 };
 
 type BenefitInput = {
@@ -27,10 +29,12 @@ type BenefitInput = {
   cashbackType: 'PERCENTAGE' | 'ONE_TIME_CASH';
   cashbackAmount: string;
   usageAvailable: string;
+  usageUsed?: number;
+  quotaResetsMonthly: boolean;
   minimumSpending: string;
   maximumSpending: string;
   applicableWeekdays: string[];
-  purchaseChannels: string[];
+  purchaseChannel: string;
   linkedCardIds: string[];
 };
 
@@ -62,6 +66,8 @@ const blankCard = (): Row<CardInput> => ({
   name: '',
   expiryDate: '',
   monthlyLimit: '',
+  fcyFee: '',
+  isCredit: false,
 });
 
 const blankBenefit = (): Row<BenefitInput> => ({
@@ -72,10 +78,12 @@ const blankBenefit = (): Row<BenefitInput> => ({
   cashbackType: 'PERCENTAGE',
   cashbackAmount: '',
   usageAvailable: '',
+  usageUsed: 0,
+  quotaResetsMonthly: false,
   minimumSpending: '',
   maximumSpending: '',
   applicableWeekdays: [],
-  purchaseChannels: [],
+  purchaseChannel: '',
   linkedCardIds: [],
 });
 
@@ -131,6 +139,87 @@ function TrashBtn({ onClick, disabled, hidden }: { onClick: () => void; disabled
     >
       <Trash2 className="h-3.5 w-3.5" />
     </button>
+  );
+}
+
+// ─── Flexible Date Input ───────────────────────────────────────────────────────
+
+function DateInput({ value, onChange, className }: { value: string; onChange: (v: string) => void; className?: string }) {
+  const [local, setLocal] = useState(value);
+  
+  useEffect(() => {
+    setLocal(value);
+  }, [value]);
+
+  const handleBlur = () => {
+    let str = local.trim();
+    if (!str) {
+      onChange('');
+      return;
+    }
+    
+    const parts = str.split(/[-\/\.\s]+/).filter(Boolean);
+    if (parts.length === 0) {
+      onChange('');
+      setLocal('');
+      return;
+    }
+    
+    const today = new Date();
+    let y = today.getFullYear();
+    let m = today.getMonth() + 1;
+    let d = today.getDate();
+
+    if (parts.length === 1) {
+      if (parts[0].length === 4) {
+        y = parseInt(parts[0], 10);
+      } else {
+        d = parseInt(parts[0], 10); // assume day if 1 or 2 digits
+      }
+    } else if (parts.length === 2) {
+      if (parts[0].length === 4) {
+        y = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10); // YYYY-MM
+      } else {
+        m = parseInt(parts[0], 10);
+        d = parseInt(parts[1], 10); // MM-DD
+      }
+    } else if (parts.length >= 3) {
+      if (parts[0].length === 4) { // YYYY-MM-DD
+        y = parseInt(parts[0], 10);
+        m = parseInt(parts[1], 10);
+        d = parseInt(parts[2], 10);
+      } else { // MM-DD-YYYY or DD-MM-YYYY, assuming MM-DD-YYYY for simplicity
+        m = parseInt(parts[0], 10);
+        d = parseInt(parts[1], 10);
+        y = parseInt(parts[2], 10);
+        if (y < 100) y += 2000;
+      }
+    }
+
+    if (m < 1) m = 1; if (m > 12) m = 12;
+    const maxD = new Date(y, m, 0).getDate();
+    if (d < 1) d = 1; if (d > maxD) d = maxD;
+
+    const finalVal = `${y}-${m.toString().padStart(2, '0')}-${d.toString().padStart(2, '0')}`;
+    setLocal(finalVal);
+    onChange(finalVal);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleBlur();
+  };
+
+  return (
+    <input
+      type="text"
+      value={local}
+      onChange={(e) => setLocal(e.target.value)}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      className={className}
+      placeholder=""
+    />
   );
 }
 
@@ -382,7 +471,14 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     if (!row.name.trim()) return;
     setBusyKey(`card-save-${row._key}`);
     try {
-      const res = await saveCard(toFormData([['id', row.id], ['name', row.name], ['expiryDate', row.expiryDate], ['monthlyLimit', row.monthlyLimit]]));
+      const res = await saveCard(toFormData([
+        ['id', row.id], 
+        ['name', row.name], 
+        ['expiryDate', row.expiryDate], 
+        ['monthlyLimit', row.monthlyLimit],
+        ['fcyFee', row.fcyFee],
+        ['isCredit', row.isCredit]
+      ]));
       if (res?.id && !row.id) {
         setCardRows((c) => c.map((r) => (r._key === row._key ? { ...r, id: res.id } : r)));
       }
@@ -403,10 +499,11 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
           ['cashbackType', row.cashbackType],
           ['cashbackAmount', row.cashbackAmount],
           ['usageAvailable', row.usageAvailable],
+          ['quotaResetsMonthly', row.quotaResetsMonthly],
           ['minimumSpending', row.minimumSpending],
           ['maximumSpending', row.maximumSpending],
           ['applicableWeekdays', row.applicableWeekdays],
-          ['purchaseChannels', row.purchaseChannels],
+          ['purchaseChannel', row.purchaseChannel],
           ['linkedCardIds', row.linkedCardIds],
         ]),
       );
@@ -418,14 +515,52 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     }
   }, []);
 
-  const handleSaveAll = async () => {
-    setBusyKey('saving-all');
+  const [saveStatus, setSaveStatus] = useState<{ friends: string; cards: string; benefits: string }>({
+    friends: '',
+    cards: '',
+    benefits: ''
+  });
+
+  const handleSaveFriends = async () => {
+    setSaveStatus(s => ({ ...s, friends: 'saving' }));
+    setBusyKey('saving-friends');
     try {
-      const friendPromises = friendRows.filter(hasFriendData).map(saveFriendRow);
-      const cardPromises = cardRows.filter(hasCardData).map(saveCardRow);
-      const benefitPromises = benefitRows.filter(hasBenefitData).map(saveBenefitRow);
-      await Promise.all([...friendPromises, ...cardPromises, ...benefitPromises]);
+      await Promise.all(friendRows.filter(hasFriendData).map(saveFriendRow));
+      setSaveStatus(s => ({ ...s, friends: 'success' }));
+      setTimeout(() => setSaveStatus(s => ({ ...s, friends: '' })), 2000);
       router.refresh();
+    } catch {
+      setSaveStatus(s => ({ ...s, friends: 'failed' }));
+    } finally {
+      setBusyKey('');
+    }
+  };
+
+  const handleSaveCards = async () => {
+    setSaveStatus(s => ({ ...s, cards: 'saving' }));
+    setBusyKey('saving-cards');
+    try {
+      await Promise.all(cardRows.filter(hasCardData).map(saveCardRow));
+      setSaveStatus(s => ({ ...s, cards: 'success' }));
+      setTimeout(() => setSaveStatus(s => ({ ...s, cards: '' })), 2000);
+      router.refresh();
+    } catch {
+      setSaveStatus(s => ({ ...s, cards: 'failed' }));
+    } finally {
+      setBusyKey('');
+    }
+  };
+
+  const handleSaveBenefits = async () => {
+    setSaveStatus(s => ({ ...s, benefits: 'saving' }));
+    setBusyKey('saving-benefits');
+    try {
+      await Promise.all(benefitRows.filter(hasBenefitData).map(saveBenefitRow));
+      setSaveStatus(s => ({ ...s, benefits: 'success' }));
+      setTimeout(() => setSaveStatus(s => ({ ...s, benefits: '' })), 2000);
+      router.refresh();
+    } catch {
+      setSaveStatus(s => ({ ...s, benefits: 'failed' }));
     } finally {
       setBusyKey('');
     }
@@ -479,23 +614,32 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     e.dataTransfer.effectAllowed = 'copy';
   };
 
+  const isCardLinked = (cardId: string) => {
+    return cardId ? benefitRows.some(b => b.linkedCardIds.includes(cardId)) : false;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-slate-900">Manage</h1>
-        <button
-          onClick={handleSaveAll}
-          disabled={busyKey !== ''}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
-        >
-          {busyKey === 'saving-all' ? 'Saving...' : 'Save Manage'}
-        </button>
       </div>
 
       {/* ── Friends ─────────────────────────────────────────────────────── */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <h2 className="text-base font-semibold text-slate-900">Friends</h2>
+          <div className="flex items-center gap-3">
+            {saveStatus.friends === 'success' && <span className="text-sm text-green-600">Saved!</span>}
+            {saveStatus.friends === 'failed' && <span className="text-sm text-red-600">Failed</span>}
+            {saveStatus.friends === 'saving' && <span className="text-sm text-slate-500">Saving...</span>}
+            <button
+              onClick={handleSaveFriends}
+              disabled={busyKey === 'saving-friends'}
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
+            >
+              Save
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
@@ -529,11 +673,10 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                     />
                   </td>
                   <td className={cellCls}>
-                    <input
-                      type="date"
+                    <DateInput
                       value={row.activeUntil}
-                      onChange={(e) => onFriendChange(index, { activeUntil: e.target.value })}
-                      className={inputCls}
+                      onChange={(val) => onFriendChange(index, { activeUntil: val })}
+                      className={`${inputCls}`}
                     />
                   </td>
                   <td className="border-0 p-1">
@@ -548,11 +691,25 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
 
       {/* ── Cards ───────────────────────────────────────────────────────── */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-3">
-          <h2 className="text-base font-semibold text-slate-900">Cards</h2>
-          <p className="mt-0.5 text-xs text-slate-400">
-            Drag a saved card row into the Benefits &ldquo;Cards&rdquo; column below.
-          </p>
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Cards</h2>
+            <p className="mt-0.5 text-xs text-slate-400">
+              Drag a saved card row into the Benefits &ldquo;Cards&rdquo; column below.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {saveStatus.cards === 'success' && <span className="text-sm text-green-600">Saved!</span>}
+            {saveStatus.cards === 'failed' && <span className="text-sm text-red-600">Failed</span>}
+            {saveStatus.cards === 'saving' && <span className="text-sm text-slate-500">Saving...</span>}
+            <button
+              onClick={handleSaveCards}
+              disabled={busyKey === 'saving-cards'}
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
+            >
+              Save
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full border-collapse text-sm">
@@ -561,6 +718,8 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                 <th className={`${thCls} w-7`}></th>
                 <th className={thCls}>Name <Req /></th>
                 <th className={thCls}>Expiry</th>
+                <th className={thCls}>Fx Fee %</th>
+                <th className={thCls}>Credit Card</th>
                 <th className={thCls}>Monthly Limit</th>
                 <th className={`${thCls} w-10`}></th>
               </tr>
@@ -587,12 +746,31 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                     />
                   </td>
                   <td className={cellCls}>
-                    <input
-                      type="date"
+                    <DateInput
                       value={row.expiryDate}
-                      onChange={(e) => onCardChange(index, { expiryDate: e.target.value })}
+                      onChange={(val) => onCardChange(index, { expiryDate: val })}
+                      className={`${inputCls}`}
+                    />
+                  </td>
+                  <td className={cellCls}>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={row.fcyFee || ''}
+                      onChange={(e) => onCardChange(index, { fcyFee: e.target.value })}
+                      placeholder="0.00"
                       className={inputCls}
                     />
+                  </td>
+                  <td className={cellCls}>
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={row.isCredit}
+                        onChange={(e) => onCardChange(index, { isCredit: e.target.checked })}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                      />
+                    </div>
                   </td>
                   <td className={cellCls}>
                     <input
@@ -605,7 +783,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                     />
                   </td>
                   <td className="border-0 p-1">
-                    <TrashBtn onClick={() => removeCardRow(row)} disabled={busyKey !== ''} hidden={!hasCardData(row)} />
+                    <TrashBtn onClick={() => removeCardRow(row)} disabled={busyKey !== ''} hidden={!hasCardData(row) || isCardLinked(row.id)} />
                   </td>
                 </tr>
               ))}
@@ -616,8 +794,20 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
 
       {/* ── Benefits ────────────────────────────────────────────────────── */}
       <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-4 py-3">
+        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
           <h2 className="text-base font-semibold text-slate-900">Benefits</h2>
+          <div className="flex items-center gap-3">
+            {saveStatus.benefits === 'success' && <span className="text-sm text-green-600">Saved!</span>}
+            {saveStatus.benefits === 'failed' && <span className="text-sm text-red-600">Failed</span>}
+            {saveStatus.benefits === 'saving' && <span className="text-sm text-slate-500">Saving...</span>}
+            <button
+              onClick={handleSaveBenefits}
+              disabled={busyKey === 'saving-benefits'}
+              className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
+            >
+              Save
+            </button>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-[1300px] border-collapse text-sm">
@@ -628,11 +818,13 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                 <th className={thCls}>Type <Req /></th>
                 <th className={thCls}>Cashback <Req /></th>
                 <th className={thCls}>Quota</th>
+                <th className={thCls}>Q. Remaining</th>
+                <th className={thCls}>Q. Resets Monthly</th>
                 <th className={thCls}>Min Spend</th>
                 <th className={thCls}>Max Spend</th>
                 <th className={thCls}>Cards</th>
                 <th className={thCls}>Weekdays</th>
-                <th className={thCls}>Channels</th>
+                <th className={thCls}>Channel</th>
                 <th className={`${thCls} w-10`}></th>
               </tr>
             </thead>
@@ -648,10 +840,9 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                     />
                   </td>
                   <td className={cellCls}>
-                    <input
-                      type="date"
+                    <DateInput
                       value={row.expiryDate}
-                      onChange={(e) => onBenefitChange(index, { expiryDate: e.target.value })}
+                      onChange={(val) => onBenefitChange(index, { expiryDate: val })}
                       className={`${inputCls} min-w-[130px]`}
                     />
                   </td>
@@ -683,8 +874,27 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                       value={row.usageAvailable}
                       onChange={(e) => onBenefitChange(index, { usageAvailable: e.target.value })}
                       placeholder="—"
-                      className={`${inputCls} min-w-[70px]`}
+                      className={`${inputCls} min-w-[70px] ${
+                        row.usageAvailable === '0'
+                          ? '!bg-red-100 !text-red-900 focus:!bg-red-200 focus:!ring-red-400'
+                          : ''
+                      }`}
                     />
+                  </td>
+                  <td className={cellCls}>
+                    <div className="flex h-full min-w-[70px] items-center text-center px-3 text-slate-500">
+                      {row.usageAvailable ? (Number(row.usageAvailable) - (row.usageUsed || 0)) : '—'}
+                    </div>
+                  </td>
+                  <td className={cellCls}>
+                    <div className="flex justify-center">
+                      <input
+                        type="checkbox"
+                        checked={row.quotaResetsMonthly}
+                        onChange={(e) => onBenefitChange(index, { quotaResetsMonthly: e.target.checked })}
+                        className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                      />
+                    </div>
                   </td>
                   <td className={cellCls}>
                     <input
@@ -722,12 +932,16 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
                     />
                   </td>
                   <td className={`${cellCls} min-w-[150px]`}>
-                    <MultiSelectPopup
-                      options={channelOptions.map((c) => ({ value: c, label: c }))}
-                      selected={row.purchaseChannels}
-                      onChange={(vals) => onBenefitChange(index, { purchaseChannels: vals })}
-                      placeholder="All channels"
-                    />
+                    <select
+                      value={row.purchaseChannel || ''}
+                      onChange={(e) => onBenefitChange(index, { purchaseChannel: e.target.value })}
+                      className={`${selectCls} min-w-[140px] appearance-none max-w-[150px] overflow-hidden text-ellipsis`}
+                    >
+                      <option value="">All channels</option>
+                      {channelOptions.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
                   </td>
                   <td className="border-0 p-1">
                     <TrashBtn onClick={() => removeBenefitRow(row)} disabled={busyKey !== ''} hidden={!hasBenefitData(row)} />

@@ -37,6 +37,8 @@ export default async function ManagePage() {
         name: card.name,
         expiryDate: card.expiryDate?.toISOString().slice(0, 10) ?? '',
         monthlyLimit: card.monthlyLimit?.toString() ?? '',
+        fcyFee: card.fcyFee?.toString() ?? '',
+        isCredit: card.isCredit,
       }))}
       benefits={benefits.map((benefit) => ({
         id: benefit.id,
@@ -45,10 +47,12 @@ export default async function ManagePage() {
         cashbackType: benefit.cashbackType,
         cashbackAmount: benefit.cashbackAmount.toString(),
         usageAvailable: benefit.usageAvailable?.toString() ?? '',
+        usageUsed: benefit.usageUsed,
+        quotaResetsMonthly: benefit.quotaResetsMonthly,
         minimumSpending: benefit.minimumSpending?.toString() ?? '',
         maximumSpending: benefit.maximumSpending?.toString() ?? '',
         applicableWeekdays: benefit.applicableWeekdays,
-        purchaseChannels: benefit.purchaseChannels,
+        purchaseChannel: benefit.purchaseChannel || '',
         linkedCardIds: benefit.cardLinks.map((link) => link.cardId),
       }))}
       weekdayOptions={Object.values(Weekday)}

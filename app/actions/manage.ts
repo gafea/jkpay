@@ -101,6 +101,8 @@ export const saveCard = async (formData: FormData) => {
   const name = String(formData.get('name') ?? '').trim();
   const expiryDate = toDate(formData.get('expiryDate'));
   const monthlyLimit = toDecimal(formData.get('monthlyLimit'));
+  const fcyFee = toDecimal(formData.get('fcyFee'));
+  const isCredit = formData.get('isCredit') === 'true';
 
   if (!name) {
     throw new Error('Card name is required');
@@ -114,6 +116,8 @@ export const saveCard = async (formData: FormData) => {
         name,
         expiryDate,
         monthlyLimit,
+        fcyFee,
+        isCredit,
       },
     });
   } else {
@@ -122,6 +126,8 @@ export const saveCard = async (formData: FormData) => {
         name,
         expiryDate,
         monthlyLimit,
+        fcyFee,
+        isCredit,
       },
     });
     recordId = created.id;
@@ -148,14 +154,14 @@ export const saveBenefit = async (formData: FormData) => {
   const cashbackType = String(formData.get('cashbackType') ?? '') as CashbackType;
   const cashbackAmount = toDecimal(formData.get('cashbackAmount'));
   const usageAvailable = toInt(formData.get('usageAvailable'));
+  const quotaResetsMonthly = formData.get('quotaResetsMonthly') === 'true';
   const minimumSpending = toDecimal(formData.get('minimumSpending'));
   const maximumSpending = toDecimal(formData.get('maximumSpending'));
   const applicableWeekdays = formData
     .getAll('applicableWeekdays')
     .map((value) => String(value) as Weekday);
-  const purchaseChannels = formData
-    .getAll('purchaseChannels')
-    .map((value) => String(value) as PurchaseChannel);
+  const purchaseChannelValue = String(formData.get('purchaseChannel') ?? '');
+  const purchaseChannel = purchaseChannelValue ? (purchaseChannelValue as PurchaseChannel) : null;
   const linkedCardIds = formData.getAll('linkedCardIds').map((value) => String(value));
 
   if (!categoryName || !cashbackType || cashbackAmount === null) {
@@ -172,10 +178,11 @@ export const saveBenefit = async (formData: FormData) => {
         cashbackType,
         cashbackAmount,
         usageAvailable,
+        quotaResetsMonthly,
         minimumSpending,
         maximumSpending,
         applicableWeekdays,
-        purchaseChannels,
+        purchaseChannel,
         cardLinks: {
           deleteMany: {},
           createMany: {
@@ -192,10 +199,11 @@ export const saveBenefit = async (formData: FormData) => {
         cashbackType,
         cashbackAmount,
         usageAvailable,
+        quotaResetsMonthly,
         minimumSpending,
         maximumSpending,
         applicableWeekdays,
-        purchaseChannels,
+        purchaseChannel,
         cardLinks: {
           createMany: {
             data: linkedCardIds.map((cardId) => ({ cardId })),
