@@ -7,9 +7,11 @@ import { config as loadEnvFile } from 'dotenv';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(__dirname, '..');
+const nextBin = path.join(workspaceRoot, 'node_modules', 'next', 'dist', 'bin', 'next');
 
 const mode = process.argv[2] ?? 'dev';
 const nextCommand = mode === 'start' ? 'start' : 'dev';
+const nextRuntimeArgs = ["--webpack"];
 
 const envFileCandidates =
   nextCommand === 'dev'
@@ -59,12 +61,18 @@ if (domain) {
 process.env.AUTH_TRUST_HOST = process.env.AUTH_TRUST_HOST || 'true';
 
 const child = spawn(
-  'next',
-  [nextCommand, '-p', port],
+  process.execPath,
+  [nextBin, nextCommand, ...nextRuntimeArgs, '-p', port],
   {
     cwd: workspaceRoot,
     stdio: 'inherit',
-    shell: process.platform === 'win32',
+    shell: false,
+    env: {
+      ...process.env,
+      INIT_CWD: workspaceRoot,
+      PWD: workspaceRoot,
+      npm_config_local_prefix: workspaceRoot,
+    },
   },
 );
 

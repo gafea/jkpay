@@ -37,8 +37,8 @@ model FriendAccess {
 model Card {
   id                String        @id @default(cuid())
   name              String
-  expiryDate        DateTime
-  monthlyLimit      Decimal       @db.Decimal(12, 2)
+  expiryDate        DateTime?
+  monthlyLimit      Decimal?      @db.Decimal(12, 2)
   isDisabled        Boolean       @default(false)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -46,21 +46,20 @@ model Card {
 }
 
 model Benefit {
-  id                String               @id @default(cuid())
-  categoryName      String
-  expiryDate        DateTime
-  cashbackType      CashbackType
-  cashbackAmount    Decimal              @db.Decimal(12, 2)
-  usageAvailable    Int?
-  minimumSpending   Decimal?             @db.Decimal(12, 2)
-  maximumSpending   Decimal?             @db.Decimal(12, 2)
+  id                 String             @id @default(cuid())
+  categoryName       String
+  expiryDate         DateTime?
+  cashbackType       CashbackType
+  cashbackAmount     Decimal            @db.Decimal(12, 2)
+  usageAvailable     Int?
+  minimumSpending    Decimal?           @db.Decimal(12, 2)
+  maximumSpending    Decimal?           @db.Decimal(12, 2)
   applicableWeekdays Weekday[]
-  purchaseChannels  PurchaseChannel[]
-  isEnabled         Boolean              @default(true)
-  createdAt         DateTime             @default(now())
-  updatedAt         DateTime             @updatedAt
-  cardLinks         BenefitCard[]
-  requests          BenefitRequest[]
+  purchaseChannels   PurchaseChannel[]
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  cardLinks          BenefitCard[]
+  requests           BenefitRequest[]
 }
 
 model BenefitCard {

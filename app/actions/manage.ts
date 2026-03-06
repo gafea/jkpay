@@ -23,8 +23,20 @@ const toDate = (value: FormDataEntryValue | null) => {
   return new Date(String(value));
 };
 
-export const addFriend = async (formData: FormData) => {
+const toInt = (value: FormDataEntryValue | null) => {
+  if (!value || String(value).trim() === '') {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) {
+    throw new Error('Invalid integer input');
+  }
+  return parsed;
+};
+
+export const saveFriend = async (formData: FormData) => {
   const owner = await ensureOwnerAccess();
+  const id = String(formData.get('id') ?? '').trim();
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   if (!email) {
     throw new Error('Friend email is required');
@@ -36,28 +48,45 @@ export const addFriend = async (formData: FormData) => {
     create: { email },
   });
 
-  await prisma.friendAccess.upsert({
-    where: {
-      ownerId_friendId: {
+  let recordId = id;
+  if (id) {
+    await prisma.friendAccess.update({
+      where: { id },
+      data: {
+        friendId: friendUser.id,
+        monthlyLimit: toDecimal(formData.get('monthlyLimit')),
+        activeUntil: toDate(formData.get('activeUntil')),
+        isDisabled: false,
+      },
+    });
+  } else {
+    const created = await prisma.friendAccess.upsert({
+      where: {
+        ownerId_friendId: {
+          ownerId: owner.id,
+          friendId: friendUser.id,
+        },
+      },
+      update: {
+        monthlyLimit: toDecimal(formData.get('monthlyLimit')),
+        activeUntil: toDate(formData.get('activeUntil')),
+        isDisabled: false,
+      },
+      create: {
         ownerId: owner.id,
         friendId: friendUser.id,
+        monthlyLimit: toDecimal(formData.get('monthlyLimit')),
+        activeUntil: toDate(formData.get('activeUntil')),
       },
-    },
-    update: {
-      monthlyLimit: toDecimal(formData.get('monthlyLimit')),
-      activeUntil: toDate(formData.get('activeUntil')),
-      isDisabled: false,
-    },
-    create: {
-      ownerId: owner.id,
-      friendId: friendUser.id,
-      monthlyLimit: toDecimal(formData.get('monthlyLimit')),
-      activeUntil: toDate(formData.get('activeUntil')),
-    },
-  });
+    });
+    recordId = created.id;
+  }
 
   revalidatePath('/manage');
+  return { id: recordId };
 };
+
+export const addFriend = saveFriend;
 
 export const removeFriend = async (formData: FormData) => {
   await ensureOwnerAccess();
@@ -66,26 +95,43 @@ export const removeFriend = async (formData: FormData) => {
   revalidatePath('/manage');
 };
 
-export const addCard = async (formData: FormData) => {
+export const saveCard = async (formData: FormData) => {
   await ensureOwnerAccess();
+  const id = String(formData.get('id') ?? '').trim();
   const name = String(formData.get('name') ?? '').trim();
   const expiryDate = toDate(formData.get('expiryDate'));
   const monthlyLimit = toDecimal(formData.get('monthlyLimit'));
 
-  if (!name || !expiryDate || monthlyLimit === null) {
-    throw new Error('Card name, expiry date and monthly limit are required');
+  if (!name) {
+    throw new Error('Card name is required');
   }
 
-  await prisma.card.create({
-    data: {
-      name,
-      expiryDate,
-      monthlyLimit,
-    },
-  });
+  let recordId = id;
+  if (id) {
+    await prisma.card.update({
+      where: { id },
+      data: {
+        name,
+        expiryDate,
+        monthlyLimit,
+      },
+    });
+  } else {
+    const created = await prisma.card.create({
+      data: {
+        name,
+        expiryDate,
+        monthlyLimit,
+      },
+    });
+    recordId = created.id;
+  }
 
   revalidatePath('/manage');
+  return { id: recordId };
 };
+
+export const addCard = saveCard;
 
 export const removeCard = async (formData: FormData) => {
   await ensureOwnerAccess();
@@ -94,15 +140,14 @@ export const removeCard = async (formData: FormData) => {
   revalidatePath('/manage');
 };
 
-export const addBenefit = async (formData: FormData) => {
+export const saveBenefit = async (formData: FormData) => {
   await ensureOwnerAccess();
+  const id = String(formData.get('id') ?? '').trim();
   const categoryName = String(formData.get('categoryName') ?? '').trim();
   const expiryDate = toDate(formData.get('expiryDate'));
   const cashbackType = String(formData.get('cashbackType') ?? '') as CashbackType;
   const cashbackAmount = toDecimal(formData.get('cashbackAmount'));
-  const usageAvailable = formData.get('usageAvailable')
-    ? Number(formData.get('usageAvailable'))
-    : null;
+  const usageAvailable = toInt(formData.get('usageAvailable'));
   const minimumSpending = toDecimal(formData.get('minimumSpending'));
   const maximumSpending = toDecimal(formData.get('maximumSpending'));
   const applicableWeekdays = formData
@@ -113,51 +158,63 @@ export const addBenefit = async (formData: FormData) => {
     .map((value) => String(value) as PurchaseChannel);
   const linkedCardIds = formData.getAll('linkedCardIds').map((value) => String(value));
 
-  if (!categoryName || !expiryDate || !cashbackType || cashbackAmount === null) {
-    throw new Error('Required benefit fields are missing');
+  if (!categoryName || !cashbackType || cashbackAmount === null) {
+    throw new Error('Category name, type and cashback amount are required');
   }
 
-  if (!linkedCardIds.length) {
-    throw new Error('At least one linked card is required');
-  }
-
-  await prisma.benefit.create({
-    data: {
-      categoryName,
-      expiryDate,
-      cashbackType,
-      cashbackAmount,
-      usageAvailable: Number.isNaN(usageAvailable) ? null : usageAvailable,
-      minimumSpending,
-      maximumSpending,
-      applicableWeekdays,
-      purchaseChannels,
-      cardLinks: {
-        createMany: {
-          data: linkedCardIds.map((cardId) => ({ cardId })),
+  let recordId = id;
+  if (id) {
+    await prisma.benefit.update({
+      where: { id },
+      data: {
+        categoryName,
+        expiryDate,
+        cashbackType,
+        cashbackAmount,
+        usageAvailable,
+        minimumSpending,
+        maximumSpending,
+        applicableWeekdays,
+        purchaseChannels,
+        cardLinks: {
+          deleteMany: {},
+          createMany: {
+            data: linkedCardIds.map((cardId) => ({ cardId })),
+          },
         },
       },
-    },
-  });
+    });
+  } else {
+    const created = await prisma.benefit.create({
+      data: {
+        categoryName,
+        expiryDate,
+        cashbackType,
+        cashbackAmount,
+        usageAvailable,
+        minimumSpending,
+        maximumSpending,
+        applicableWeekdays,
+        purchaseChannels,
+        cardLinks: {
+          createMany: {
+            data: linkedCardIds.map((cardId) => ({ cardId })),
+          },
+        },
+      },
+    });
+    recordId = created.id;
+  }
 
   revalidatePath('/manage');
+  return { id: recordId };
 };
+
+export const addBenefit = saveBenefit;
 
 export const removeBenefit = async (formData: FormData) => {
   await ensureOwnerAccess();
   const id = String(formData.get('id') ?? '');
   await prisma.benefit.delete({ where: { id } });
   revalidatePath('/manage');
-};
-
-export const toggleBenefit = async (formData: FormData) => {
-  await ensureOwnerAccess();
-  const id = String(formData.get('id') ?? '');
-  const isEnabled = String(formData.get('isEnabled') ?? '') === 'true';
-  await prisma.benefit.update({
-    where: { id },
-    data: { isEnabled: !isEnabled },
-  });
-  revalidatePath('/manage');
-  revalidatePath('/browse');
 };

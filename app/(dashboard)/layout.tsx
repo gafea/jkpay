@@ -10,9 +10,9 @@ export default async function DashboardLayout({
   const owner = isOwnerEmail(user.email);
 
   return (
-    <div className="shell">
+    <div className="flex min-h-screen flex-col lg:flex-row">
       <Sidebar userEmail={user.email} isOwner={owner} />
-      <main className="content">{children}</main>
+      <main className="min-w-0 flex-1 p-4 lg:p-6">{children}</main>
     </div>
   );
 }
