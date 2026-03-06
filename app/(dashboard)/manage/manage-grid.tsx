@@ -97,6 +97,16 @@ const hasBenefitData = (row: BenefitInput) =>
   row.categoryName.trim() !== '' ||
   row.cashbackAmount.trim() !== '';
 
+const isBenefitExpired = (dateStr: string) => {
+  if (!dateStr) return false;
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const ed = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+  return ed < today;
+};
+
 const toFormData = (pairs: Array<[string, string | string[] | boolean]>) => {
   const formData = new FormData();
   for (const [key, value] of pairs) {
@@ -418,10 +428,21 @@ function CardSelector({
 export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOptions }: ManageGridProps) => {
   const router = useRouter();
   const [busyKey, setBusyKey] = useState('');
+  const [showExpiredBenefits, setShowExpiredBenefits] = useState(false);
 
   const [friendRows, setFriendRows] = useState<Row<FriendInput>[]>(() => [...withKey(friends), blankFriend()]);
   const [cardRows, setCardRows] = useState<Row<CardInput>[]>(() => [...withKey(cards), blankCard()]);
   const [benefitRows, setBenefitRows] = useState<Row<BenefitInput>[]>(() => [...withKey(benefits), blankBenefit()]);
+
+  // Compute if rows are edited
+  const omitKey = <T extends Record<string, any>>(obj: T): Omit<T, '_key'> => {
+    const { _key, ...rest } = obj;
+    return rest;
+  };
+  
+  const isFriendsChanged = JSON.stringify(friendRows.filter(hasFriendData).map(omitKey)) !== JSON.stringify(friends);
+  const isCardsChanged = JSON.stringify(cardRows.filter(hasCardData).map(omitKey)) !== JSON.stringify(cards);
+  const isBenefitsChanged = JSON.stringify(benefitRows.filter(hasBenefitData).map(omitKey)) !== JSON.stringify(benefits);
 
   const appendIfNeeded = <T,>(rows: Row<T>[], index: number, hasData: (row: T) => boolean, blank: () => Row<T>) => {
     if (index !== rows.length - 1) {
@@ -574,6 +595,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     setBusyKey(`friend-remove-${row._key}`);
     try {
       await removeFriend(toFormData([['id', row.id]]));
+      setFriendRows((current) => current.filter((item) => item._key !== row._key));
       router.refresh();
     } finally {
       setBusyKey('');
@@ -588,6 +610,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     setBusyKey(`card-remove-${row._key}`);
     try {
       await removeCard(toFormData([['id', row.id]]));
+      setCardRows((current) => current.filter((item) => item._key !== row._key));
       router.refresh();
     } finally {
       setBusyKey('');
@@ -602,6 +625,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
     setBusyKey(`benefit-remove-${row._key}`);
     try {
       await removeBenefit(toFormData([['id', row.id]]));
+      setBenefitRows((current) => current.filter((item) => item._key !== row._key));
       router.refresh();
     } finally {
       setBusyKey('');
@@ -634,7 +658,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
             {saveStatus.friends === 'saving' && <span className="text-sm text-slate-500">Saving...</span>}
             <button
               onClick={handleSaveFriends}
-              disabled={busyKey === 'saving-friends'}
+              disabled={busyKey === 'saving-friends' || !isFriendsChanged}
               className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
             >
               Save
@@ -704,7 +728,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
             {saveStatus.cards === 'saving' && <span className="text-sm text-slate-500">Saving...</span>}
             <button
               onClick={handleSaveCards}
-              disabled={busyKey === 'saving-cards'}
+              disabled={busyKey === 'saving-cards' || !isCardsChanged}
               className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
             >
               Save
@@ -802,7 +826,7 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
             {saveStatus.benefits === 'saving' && <span className="text-sm text-slate-500">Saving...</span>}
             <button
               onClick={handleSaveBenefits}
-              disabled={busyKey === 'saving-benefits'}
+              disabled={busyKey === 'saving-benefits' || !isBenefitsChanged}
               className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
             >
               Save
@@ -829,7 +853,10 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {benefitRows.map((row, index) => (
+              {benefitRows
+                .map((row, index) => ({ row, index }))
+                .filter(({ row, index }) => !isBenefitExpired(row.expiryDate) || index === benefitRows.length - 1)
+                .map(({ row, index }) => (
                 <tr key={row._key} className="group hover:bg-slate-50/60">
                   <td className={cellCls}>
                     <input
@@ -951,6 +978,149 @@ export const ManageGrid = ({ friends, cards, benefits, weekdayOptions, channelOp
             </tbody>
           </table>
         </div>
+      </section>
+
+      {/* ── Expired Benefits ────────────────────────────────────────────── */}
+      <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-sm">
+        <div 
+          className="flex items-center justify-between border-slate-200 px-4 py-3 cursor-pointer select-none"
+          onClick={() => setShowExpiredBenefits((prev) => !prev)}
+        >
+          <div className="flex items-center gap-2 text-slate-500">
+            {showExpiredBenefits ? <ChevronDown className="h-4 w-4" /> : <ChevronDown className="h-4 w-4 -rotate-90" />}
+            <h2 className="text-base font-semibold">Expired Benefits</h2>
+          </div>
+        </div>
+        {showExpiredBenefits && (
+          <div className="overflow-x-auto border-t border-slate-200 bg-white">
+            <table className="min-w-[1300px] border-collapse text-sm">
+              <tbody className="divide-y divide-slate-100">
+                {benefitRows
+                  .map((row, index) => ({ row, index }))
+                  .filter(({ row, index }) => isBenefitExpired(row.expiryDate) && index !== benefitRows.length - 1)
+                  .map(({ row, index }) => (
+                  <tr key={row._key} className="group hover:bg-slate-50/60 opacity-60 hover:opacity-100 transition-opacity">
+                    <td className={cellCls}>
+                      <input
+                        value={row.categoryName}
+                        onChange={(e) => onBenefitChange(index, { categoryName: e.target.value })}
+                        placeholder="Category"
+                        className={`${inputCls} min-w-[120px]`}
+                      />
+                    </td>
+                    <td className={cellCls}>
+                      <DateInput
+                        value={row.expiryDate}
+                        onChange={(val) => onBenefitChange(index, { expiryDate: val })}
+                        className={`${inputCls} min-w-[130px]`}
+                      />
+                    </td>
+                    <td className={cellCls}>
+                      <select
+                        value={row.cashbackType}
+                        onChange={(e) =>
+                          onBenefitChange(index, { cashbackType: e.target.value as BenefitInput['cashbackType'] })
+                        }
+                        className={`${selectCls} min-w-[130px]`}
+                      >
+                        <option value="PERCENTAGE">Percentage</option>
+                        <option value="ONE_TIME_CASH">One-time Cash</option>
+                      </select>
+                    </td>
+                    <td className={cellCls}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={row.cashbackAmount}
+                        onChange={(e) => onBenefitChange(index, { cashbackAmount: e.target.value })}
+                        placeholder="0.00"
+                        className={`${inputCls} min-w-[90px]`}
+                      />
+                    </td>
+                    <td className={cellCls}>
+                      <input
+                        type="number"
+                        value={row.usageAvailable}
+                        onChange={(e) => onBenefitChange(index, { usageAvailable: e.target.value })}
+                        placeholder="—"
+                        className={`${inputCls} min-w-[70px] ${
+                          row.usageAvailable !== '' && row.usageUsed !== undefined && row.usageUsed >= parseInt(row.usageAvailable)
+                            ? 'text-red-600 font-semibold'
+                            : ''
+                        }`}
+                      />
+                    </td>
+                    <td className={`${cellCls} px-2 py-1.5 text-slate-500`}>
+                      {row.usageAvailable !== '' && row.usageUsed !== undefined
+                        ? Math.max(0, parseInt(row.usageAvailable) - row.usageUsed)
+                        : '—'}
+                    </td>
+                    <td className={cellCls}>
+                      <div className="flex justify-center">
+                        <input
+                          type="checkbox"
+                          checked={row.quotaResetsMonthly}
+                          onChange={(e) => onBenefitChange(index, { quotaResetsMonthly: e.target.checked })}
+                          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                        />
+                      </div>
+                    </td>
+                    <td className={cellCls}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={row.minimumSpending}
+                        onChange={(e) => onBenefitChange(index, { minimumSpending: e.target.value })}
+                        placeholder="0.00"
+                        className={`${inputCls} min-w-[90px]`}
+                      />
+                    </td>
+                    <td className={cellCls}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={row.maximumSpending}
+                        onChange={(e) => onBenefitChange(index, { maximumSpending: e.target.value })}
+                        placeholder="0.00"
+                        className={`${inputCls} min-w-[90px]`}
+                      />
+                    </td>
+                    <td className={`${cellCls} min-w-[180px]`}>
+                      <CardSelector
+                        cards={cards} // Using saved cards to let them map
+                        selectedIds={row.linkedCardIds}
+                        onChange={(ids) => onBenefitChange(index, { linkedCardIds: ids })}
+                      />
+                    </td>
+                    <td className={`${cellCls} min-w-[140px]`}>
+                      <MultiSelectPopup
+                        options={weekdayOptions.map((d) => ({ value: d, label: d }))}
+                        selected={row.applicableWeekdays}
+                        onChange={(vals) => onBenefitChange(index, { applicableWeekdays: vals })}
+                        placeholder="All days"
+                      />
+                    </td>
+                    <td className={`${cellCls} min-w-[150px]`}>
+                      <select
+                        value={row.purchaseChannel || ''}
+                        onChange={(e) => onBenefitChange(index, { purchaseChannel: e.target.value })}
+                        className={`${selectCls} min-w-[140px] appearance-none max-w-[150px] overflow-hidden text-ellipsis`}
+                      >
+                        <option value="">All channels</option>
+                        {channelOptions.map(c => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="border-0 p-1">
+                      <TrashBtn onClick={() => removeBenefitRow(row)} disabled={busyKey !== ''} hidden={!hasBenefitData(row)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

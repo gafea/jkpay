@@ -5,6 +5,12 @@ export default async function BrowsePage() {
   await ensureBrowseHistoryAccess();
 
   const benefits = await prisma.benefit.findMany({
+    where: {
+      OR: [
+        { expiryDate: null },
+        { expiryDate: { gte: new Date() } }
+      ]
+    },
     include: {
       cardLinks: {
         include: { card: true },
@@ -82,22 +88,25 @@ export default async function BrowsePage() {
 
     return (
       <div className="flex flex-col h-full rounded-xl shadow-md overflow-hidden bg-white border border-slate-200">
-        <div className={`flex flex-col justify-between bg-gradient-to-br ${colorClass} p-5 text-white ${others.length === 0 ? 'flex-1' : ''}`}>
+        <div className={`flex flex-col justify-between bg-gradient-to-br flex-1 ${colorClass} p-5 text-white`}>
           <div>
-            <div className="text-sm font-medium text-white/90 uppercase tracking-wider">{label} Max Cashback</div>
+            <div className="text-sm font-medium text-white/90 uppercase tracking-wider">{label}</div>
             <div className="mt-2 flex flex-col items-start gap-1">
-              <span className="text-4xl font-bold">{b.effectiveCashback.toFixed(2).replace(/\.?0+$/, '')}%</span>
-              <span className="text-sm font-medium text-white/90">on {b.cardNames}</span>
+              <div className="flex items-baseline">
+                <span className="text-4xl font-bold">{b.effectiveCashback.toFixed(2).replace(/\.?0+$/, '')}%</span>
+                <span className="ml-2 text-sm font-medium text-white/80 uppercase tracking-wide">
+                  Cashback
+                </span>
+              </div>
+              <span className="text-sm font-medium text-white/80">with {b.cardNames}</span>
             </div>
           </div>
           <div className="mt-4 flex flex-col gap-1 text-sm text-white/90">
-            {(b.minimumSpending !== null || b.maximumSpending !== null) ? (
+            {(b.minimumSpending !== null || b.maximumSpending !== null) && (
               <div>
                 Spend: {b.minimumSpending !== null ? `$${b.minimumSpending.toString()}` : '$0'}
                 {b.maximumSpending !== null ? ` - $${b.maximumSpending.toString()}` : '+'}
               </div>
-            ) : (
-              <div>Spend: Any Spending</div>
             )}
             {b.usageAvailable !== null && (
               <div>Quota: {b.usageAvailable.toString()}</div>
@@ -114,9 +123,9 @@ export default async function BrowsePage() {
                     : `$${other.minimumSpending !== null ? other.minimumSpending.toString() : '0'}${other.maximumSpending !== null ? ` - $${other.maximumSpending.toString()}` : '+'}`;
                   return (
                     <tr key={idx} className={idx !== others.length - 1 ? "border-b border-slate-100" : ""}>
-                      <td className="px-4 py-3 whitespace-nowrap text-slate-600 font-medium">{rangeStr}</td>
-                      <td className="px-4 py-3 text-slate-600 truncate max-w-[120px]">{other.cardNames}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap font-bold text-right ${colorClass.includes('blue') ? 'text-blue-600' : colorClass.includes('emerald') ? 'text-emerald-600' : 'text-purple-600'}`}>{other.effectiveCashback.toFixed(2).replace(/\.?0+$/, '')}%</td>
+                      <td className="px-5 py-3 whitespace-nowrap text-slate-600 font-medium">{rangeStr}</td>
+                      <td className="px-5 py-3 text-slate-600 truncate max-w-[120px]">{other.cardNames}</td>
+                      <td className={`px-5 py-3 whitespace-nowrap font-bold text-right ${colorClass.includes('blue') ? 'text-blue-600' : colorClass.includes('emerald') ? 'text-emerald-600' : 'text-purple-600'}`}>{other.effectiveCashback.toFixed(2).replace(/\.?0+$/, '')}%</td>
                     </tr>
                   );
                 })}

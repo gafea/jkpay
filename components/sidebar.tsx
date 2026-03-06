@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
+import { reauthenticate } from '@/app/actions/auth';
 import { usePathname } from 'next/navigation';
-import { ClipboardList, Search, History, Settings, User } from 'lucide-react';
+import { ClipboardList, Search, History, Settings, User, ArrowLeftRight } from 'lucide-react';
 
 type SidebarProps = {
   userEmail: string;
@@ -77,9 +78,22 @@ export const Sidebar = ({ userEmail, isOwner }: SidebarProps) => {
       </nav>
 
       {/* User email — hidden on mobile */}
-      <div className="mt-auto hidden items-center gap-2 border-t border-slate-100 px-4 py-3 lg:flex">
-        <User className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-        <span className="break-all text-xs text-slate-500">{userEmail}</span>
+      <div className="mt-auto hidden items-center justify-between border-t border-slate-100 px-4 py-3 lg:flex">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <User className={`h-3.5 w-3.5 shrink-0 ${isOwner ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`} />
+          <span className={`truncate text-xs ${isOwner ? 'text-amber-500' : 'text-slate-500'}`} title={userEmail}>
+            {isOwner && 'Owner: '}{userEmail}
+          </span>
+        </div>
+        <form action={reauthenticate}>
+          <button
+            type="submit"
+            className="ml-2 flex items-center justify-center rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-indigo-600 transition-colors"
+            title="Switch user"
+          >
+            <ArrowLeftRight className="h-4 w-4" />
+          </button>
+        </form>
       </div>
     </aside>
   );

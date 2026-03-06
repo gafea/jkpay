@@ -42,7 +42,7 @@ export default async function HomePage() {
           </form>
         ) : (
           <div className="grid gap-2 text-sm text-slate-700">
-            <p>Your account is signed in but does not currently have dashboard access.</p>
+            <p>You've signed in, but it seems that you have not been invited yet.</p>
             <p>Email: {session.user.email}</p>
             <form
               action={async () => {
