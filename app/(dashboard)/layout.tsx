@@ -1,11 +1,7 @@
 import { Sidebar } from '@/components/sidebar';
 import { ensureBrowseHistoryAccess, isOwnerEmail } from '@/lib/access';
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await ensureBrowseHistoryAccess();
   const owner = isOwnerEmail(user.email);
 

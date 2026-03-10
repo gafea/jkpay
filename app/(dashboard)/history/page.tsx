@@ -7,10 +7,10 @@ export default async function HistoryPage() {
   await resetMonthlyBenefitUsage();
 
   const requests = await prisma.benefitRequest.findMany({
-      where: { userId: user.id },
-      include: { benefit: { select: { categoryName: true } } },
-      orderBy: { createdAt: 'desc' },
-    });
+    where: { userId: user.id },
+    include: { benefit: { select: { categoryName: true } } },
+    orderBy: { createdAt: 'desc' },
+  });
   type RequestRow = (typeof requests)[number];
 
   return (
@@ -30,15 +30,15 @@ export default async function HistoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-            {requests.map((request: RequestRow) => (
-              <tr key={request.id}>
-                <td className="px-3 py-2">{request.createdAt.toISOString().replace('T', ' ').slice(0, 16)}</td>
-                <td className="px-3 py-2">{request.benefit.categoryName}</td>
-                <td className="px-3 py-2">{request.amountSpent.toString()}</td>
-                <td className="px-3 py-2">{request.purchaseChannel}</td>
-                <td className="px-3 py-2">{request.status}</td>
-              </tr>
-            ))}
+              {requests.map((request: RequestRow) => (
+                <tr key={request.id}>
+                  <td className="px-3 py-2">{request.createdAt.toISOString().replace('T', ' ').slice(0, 16)}</td>
+                  <td className="px-3 py-2">{request.benefit.categoryName}</td>
+                  <td className="px-3 py-2">{request.amountSpent.toString()}</td>
+                  <td className="px-3 py-2">{request.purchaseChannel}</td>
+                  <td className="px-3 py-2">{request.status}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

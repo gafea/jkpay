@@ -5,11 +5,7 @@ import { NextResponse } from 'next/server';
 const isPublicPath = (pathname: string) => pathname === '/';
 
 const isStaticOrAuthRoute = (pathname: string) => {
-  return (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api/auth') ||
-    pathname === '/favicon.ico'
-  );
+  return pathname.startsWith('/_next') || pathname.startsWith('/api/auth') || pathname === '/favicon.ico';
 };
 
 export default auth((request) => {

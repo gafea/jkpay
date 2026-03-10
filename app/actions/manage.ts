@@ -1,6 +1,6 @@
 'use server';
 
-import { CashbackType, PurchaseChannel, Weekday } from '@prisma/client';
+import { CashbackType, PurchaseChannel, QuotaType, Weekday } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
 import { ensureOwnerAccess } from '@/lib/access';
 import { prisma } from '@/lib/prisma';
@@ -37,8 +37,11 @@ const toInt = (value: FormDataEntryValue | null) => {
 export const saveFriend = async (formData: FormData) => {
   const owner = await ensureOwnerAccess();
   const id = String(formData.get('id') ?? '').trim();
-  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const email = String(formData.get('email') ?? '')
+    .trim()
+    .toLowerCase();
   const nickname = String(formData.get('nickname') ?? '').trim();
+  const fcmToken = String(formData.get('fcmToken') ?? '').trim();
   const isDisabled = formData.get('isDisabled') === 'true';
   if (!email) {
     throw new Error('Friend email is required');
@@ -57,6 +60,7 @@ export const saveFriend = async (formData: FormData) => {
       data: {
         friendId: friendUser.id,
         nickname: nickname || null,
+        fcmToken: fcmToken || null,
         activeUntil: toDate(formData.get('activeUntil')),
         isDisabled,
       },
@@ -71,6 +75,7 @@ export const saveFriend = async (formData: FormData) => {
       },
       update: {
         nickname: nickname || null,
+        fcmToken: fcmToken || null,
         activeUntil: toDate(formData.get('activeUntil')),
         isDisabled,
       },
@@ -78,6 +83,7 @@ export const saveFriend = async (formData: FormData) => {
         ownerId: owner.id,
         friendId: friendUser.id,
         nickname: nickname || null,
+        fcmToken: fcmToken || null,
         activeUntil: toDate(formData.get('activeUntil')),
         isDisabled,
       },
@@ -157,13 +163,12 @@ export const saveBenefit = async (formData: FormData) => {
   const expiryDate = toDate(formData.get('expiryDate'));
   const cashbackType = String(formData.get('cashbackType') ?? '') as CashbackType;
   const cashbackAmount = toDecimal(formData.get('cashbackAmount'));
+  const quotaType = (String(formData.get('quotaType') ?? 'CAP') as QuotaType) || 'CAP';
   const usageAvailable = toInt(formData.get('usageAvailable'));
   const quotaResetsMonthly = formData.get('quotaResetsMonthly') === 'true';
   const minimumSpending = toDecimal(formData.get('minimumSpending'));
   const maximumSpending = toDecimal(formData.get('maximumSpending'));
-  const applicableWeekdays = formData
-    .getAll('applicableWeekdays')
-    .map((value) => String(value) as Weekday);
+  const applicableWeekdays = formData.getAll('applicableWeekdays').map((value) => String(value) as Weekday);
   const purchaseChannelValue = String(formData.get('purchaseChannel') ?? '');
   const purchaseChannel = purchaseChannelValue ? (purchaseChannelValue as PurchaseChannel) : null;
   const linkedCardIds = formData.getAll('linkedCardIds').map((value) => String(value));
@@ -181,6 +186,7 @@ export const saveBenefit = async (formData: FormData) => {
         expiryDate,
         cashbackType,
         cashbackAmount,
+        quotaType,
         usageAvailable,
         quotaResetsMonthly,
         minimumSpending,
@@ -202,6 +208,7 @@ export const saveBenefit = async (formData: FormData) => {
         expiryDate,
         cashbackType,
         cashbackAmount,
+        quotaType,
         usageAvailable,
         quotaResetsMonthly,
         minimumSpending,
@@ -229,4 +236,20 @@ export const removeBenefit = async (formData: FormData) => {
   const id = String(formData.get('id') ?? '');
   await prisma.benefit.delete({ where: { id } });
   revalidatePath('/manage');
+};
+
+export const saveServerVariables = async (formData: FormData) => {
+  await ensureOwnerAccess();
+  const raw = String(formData.get('variables') ?? '{}');
+  const parsed = JSON.parse(raw) as Record<string, string>;
+
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!key.startsWith('DYNAMIC_')) {
+      throw new Error('Only DYNAMIC_ variables can be updated');
+    }
+    process.env[key] = value;
+  }
+
+  revalidatePath('/manage');
+  return { ok: true };
 };

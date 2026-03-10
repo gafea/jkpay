@@ -77,8 +77,8 @@ export const getFriendAccessStatus = async (email: string): Promise<'active' | '
     return 'disabled';
   }
 
-  const hasExpired = user.friendOf.some(
-    (friendAccess) => Boolean(friendAccess.activeUntil && friendAccess.activeUntil < now),
+  const hasExpired = user.friendOf.some((friendAccess) =>
+    Boolean(friendAccess.activeUntil && friendAccess.activeUntil < now),
   );
   if (hasExpired) {
     return 'expired';

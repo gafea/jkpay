@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL_WITH_SECRET")
 }
 
 model User {
@@ -23,6 +23,7 @@ model FriendAccess {
   ownerId           String
   friendId          String
   nickname          String?
+  fcmToken          String?
   activeUntil       DateTime?
   isDisabled        Boolean   @default(false)
   createdAt         DateTime  @default(now())
@@ -51,6 +52,7 @@ model Benefit {
   expiryDate         DateTime?
   cashbackType       CashbackType
   cashbackAmount     Decimal            @db.Decimal(12, 2)
+  quotaType          QuotaType          @default(CAP)
   usageAvailable     Int?
   usageUsed          Int                @default(0)
   usageResetAt       DateTime?
@@ -109,6 +111,11 @@ enum PurchaseChannel {
   ONLINE_PURCHASE
   OFFLINE_PURCHASE
   FOREIGN_CURRENCY
+}
+
+enum QuotaType {
+  CAP
+  COUNT
 }
 
 enum RequestStatus {

@@ -66,9 +66,7 @@ export const Sidebar = ({ userName, userEmail, isOwner }: SidebarProps) => {
               key={item.href}
               href={item.href}
               className={`flex shrink-0 flex-col items-center gap-1 rounded-lg px-3 py-2 text-xs font-medium transition-colors lg:flex-row lg:gap-3 lg:px-3 lg:py-2 lg:text-sm ${
-                isActive
-                  ? 'bg-indigo-50 text-indigo-700'
-                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                isActive ? 'bg-indigo-50 text-indigo-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <Icon className="h-4 w-4 shrink-0 lg:h-4 lg:w-4" />
@@ -86,7 +84,8 @@ export const Sidebar = ({ userName, userEmail, isOwner }: SidebarProps) => {
               {userName || (isOwner ? 'Owner' : 'User')}
             </p>
             <p className="truncate text-[11px] text-slate-500" title={userEmail}>
-              {isOwner ? 'Owner: ' : ''}{userEmail}
+              {isOwner ? 'Owner: ' : ''}
+              {userEmail}
             </p>
           </div>
         </div>
@@ -110,7 +109,8 @@ export const Sidebar = ({ userName, userEmail, isOwner }: SidebarProps) => {
               {userName || (isOwner ? 'Owner' : 'User')}
             </p>
             <p className="truncate text-[11px] text-slate-500" title={userEmail}>
-              {isOwner ? 'Owner: ' : ''}{userEmail}
+              {isOwner ? 'Owner: ' : ''}
+              {userEmail}
             </p>
           </div>
         </div>

@@ -17,6 +17,9 @@ type AnyBenefitOption = {
   benefitName: string;
   cashbackType: CashbackType;
   cashbackAmount: number;
+  quotaType: 'CAP' | 'COUNT';
+  usageAvailable: number | null;
+  usageUsed: number;
   minimumSpending: number | null;
   maximumSpending: number | null;
   purchaseChannel: PurchaseChannel | null;
@@ -30,6 +33,9 @@ type AdoptButtonProps = {
   benefitName: string;
   cashbackType: CashbackType;
   cashbackAmount: number;
+  quotaType: 'CAP' | 'COUNT';
+  usageAvailable: number | null;
+  usageUsed: number;
   minimumSpending: number | null;
   maximumSpending: number | null;
   cardOptions: CardOption[];
@@ -69,6 +75,9 @@ export const AdoptButton = ({
   benefitName,
   cashbackType,
   cashbackAmount,
+  quotaType,
+  usageAvailable,
+  usageUsed,
   minimumSpending,
   maximumSpending,
   cardOptions,
@@ -106,15 +115,20 @@ export const AdoptButton = ({
     ? anyBenefitOptions
     : sameTypeBenefitOptions.length > 0
       ? sameTypeBenefitOptions
-      : [{
-          benefitName,
-          cashbackType,
-          cashbackAmount,
-          minimumSpending,
-          maximumSpending,
-          purchaseChannel: defaultChannel ?? null,
-          cardOptions,
-        }];
+      : [
+          {
+            benefitName,
+            cashbackType,
+            cashbackAmount,
+            quotaType,
+            usageAvailable,
+            usageUsed,
+            minimumSpending,
+            maximumSpending,
+            purchaseChannel: defaultChannel ?? null,
+            cardOptions,
+          },
+        ];
 
   const allCandidates = sourceOptions.flatMap((option) =>
     option.cardOptions.map((card) => {
@@ -129,7 +143,26 @@ export const AdoptButton = ({
           : option.cashbackAmount
         : 0;
 
-      const eligible = matchesChannel(option.purchaseChannel) && matchesSpend(option.minimumSpending, option.maximumSpending);
+      const quotaRemaining =
+        option.usageAvailable === null ? null : Math.max(0, option.usageAvailable - option.usageUsed);
+
+      const eligible =
+        matchesChannel(option.purchaseChannel) && matchesSpend(option.minimumSpending, option.maximumSpending);
+
+      const quotaAdjustedEarn =
+        option.quotaType === 'COUNT'
+          ? quotaRemaining !== null && quotaRemaining <= 0
+            ? 0
+            : earnAmount
+          : quotaRemaining === null
+            ? earnAmount
+            : Math.min(earnAmount, quotaRemaining);
+
+      const eligibleWithQuota =
+        eligible &&
+        (option.quotaType === 'COUNT'
+          ? quotaRemaining === null || quotaRemaining > 0
+          : quotaRemaining === null || quotaRemaining > 0);
 
       return {
         id: `${option.benefitName}-${card.name}-${option.cashbackAmount}-${option.purchaseChannel ?? 'ANY'}`,
@@ -140,8 +173,8 @@ export const AdoptButton = ({
         rangeLabel: formatSpendRange(option.minimumSpending, option.maximumSpending),
         cardName: card.name,
         effectiveRate,
-        earnAmount,
-        eligible,
+        earnAmount: quotaAdjustedEarn,
+        eligible: eligibleWithQuota,
       };
     }),
   );
@@ -150,7 +183,7 @@ export const AdoptButton = ({
 
   const selectedOrDefaultChannel: PurchaseChannel | null = defaultChannel ?? (purchaseChannel || null);
 
-  const bestAnyCandidate = activeCandidates.reduce<typeof activeCandidates[number] | null>((best, candidate) => {
+  const bestAnyCandidate = activeCandidates.reduce<(typeof activeCandidates)[number] | null>((best, candidate) => {
     if (!best) return candidate;
     if (hasValidAmount) {
       return candidate.earnAmount > best.earnAmount ? candidate : best;
@@ -175,10 +208,7 @@ export const AdoptButton = ({
       : null
     : null;
 
-  const youEarns =
-    hasValidAmount && effectiveBest
-      ? effectiveBest.earns
-      : 0;
+  const youEarns = hasValidAmount && effectiveBest ? effectiveBest.earns : 0;
 
   const totalNeedToPay = hasValidAmount ? amount - youEarns : 0;
   const savingsPct = hasValidAmount && amount > 0 ? (youEarns / amount) * 100 : 0;
@@ -189,9 +219,11 @@ export const AdoptButton = ({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={compact
-          ? 'rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50'
-          : 'rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50'}
+        className={
+          compact
+            ? 'rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50'
+            : 'rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50'
+        }
       >
         Adopt
       </button>
@@ -218,6 +250,7 @@ export const AdoptButton = ({
               }}
             >
               <input type="hidden" name="benefitId" value={benefitId} />
+              <input type="hidden" name="estimatedCashback" value={Math.max(0, Math.round(youEarns)).toString()} />
               <div className="mb-3 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 Benefit: <span className="font-medium">{benefitName}</span>
               </div>
@@ -259,33 +292,49 @@ export const AdoptButton = ({
                   <div className="border-b border-slate-100 px-5 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
                     {isAnyBenefit ? 'Best Card' : 'Benefits'}
                   </div>
-                    <table className="w-full border-collapse text-sm">
-                      <tbody>
-                        {isAnyBenefit && effectiveBest ? (
-                          <tr>
-                            <td className="px-5 py-3 whitespace-nowrap text-slate-600 font-medium">{effectiveBest.rangeLabel}</td>
-                            <td className="px-5 py-3 text-slate-600 truncate max-w-[180px]">{effectiveBest.cardName}</td>
-                            <td className={`px-5 py-3 whitespace-nowrap font-bold text-right ${effectiveBest.cashbackColorClass}`}>{effectiveBest.cashbackText}</td>
-                          </tr>
-                        ) : (
-                          allCandidates.map((candidate) => {
-                            const isBest = !amountSpent || (effectiveBest && candidate.id === effectiveBest.id);
-                            return (
-                              <tr key={candidate.id} className={isBest ? 'bg-white' : 'bg-slate-100'}>
-                                <td className="px-5 py-3 whitespace-nowrap text-slate-600 font-medium">{candidate.rangeLabel}</td>
-                                <td className="px-5 py-3 text-slate-700 truncate max-w-[180px]">
-                                  {candidate.cardName}
-                                </td>
-                                <td className={`px-5 py-3 whitespace-nowrap font-bold text-right ${cashbackColorClass(candidate.purchaseChannel ?? selectedOrDefaultChannel)}`}>
-                                  {candidate.cashbackType === 'PERCENTAGE' ? formatRate(candidate.effectiveRate) : formatMoney(candidate.cashbackAmount)}
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                        {!effectiveBest && <tr><td className="px-5 py-3 text-slate-500" colSpan={3}>No eligible cards found</td></tr>}
-                      </tbody>
-                    </table>
+                  <table className="w-full border-collapse text-sm">
+                    <tbody>
+                      {isAnyBenefit && effectiveBest ? (
+                        <tr>
+                          <td className="px-5 py-3 whitespace-nowrap text-slate-600 font-medium">
+                            {effectiveBest.rangeLabel}
+                          </td>
+                          <td className="px-5 py-3 text-slate-600 truncate max-w-[180px]">{effectiveBest.cardName}</td>
+                          <td
+                            className={`px-5 py-3 whitespace-nowrap font-bold text-right ${effectiveBest.cashbackColorClass}`}
+                          >
+                            {effectiveBest.cashbackText}
+                          </td>
+                        </tr>
+                      ) : (
+                        allCandidates.map((candidate) => {
+                          const isBest = !amountSpent || (effectiveBest && candidate.id === effectiveBest.id);
+                          return (
+                            <tr key={candidate.id} className={isBest ? 'bg-white' : 'bg-slate-100'}>
+                              <td className="px-5 py-3 whitespace-nowrap text-slate-600 font-medium">
+                                {candidate.rangeLabel}
+                              </td>
+                              <td className="px-5 py-3 text-slate-700 truncate max-w-[180px]">{candidate.cardName}</td>
+                              <td
+                                className={`px-5 py-3 whitespace-nowrap font-bold text-right ${cashbackColorClass(candidate.purchaseChannel ?? selectedOrDefaultChannel)}`}
+                              >
+                                {candidate.cashbackType === 'PERCENTAGE'
+                                  ? formatRate(candidate.effectiveRate)
+                                  : formatMoney(candidate.cashbackAmount)}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                      {!effectiveBest && (
+                        <tr>
+                          <td className="px-5 py-3 text-slate-500" colSpan={3}>
+                            No eligible cards found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
 
                 <div className="mb-2 overflow-hidden rounded-md border border-slate-200 bg-white">
@@ -303,13 +352,17 @@ export const AdoptButton = ({
                   <div className="rounded-md px-5 py-2">
                     <div className="font-semibold text-slate-500">You earn (Est.)</div>
                     <div className="text-base font-semibold text-slate-700">
-                        {formatMoney(youEarns)}
-                        <span className="ml-2 text-sm font-medium text-emerald-600">({savingsPct.toFixed(1)}% savings)</span>
+                      {formatMoney(youEarns)}
+                      <span className="ml-2 text-sm font-medium text-emerald-600">
+                        ({savingsPct.toFixed(1)}% savings)
+                      </span>
                     </div>
                   </div>
                   <div className="rounded-md px-5 py-2">
                     <div className="font-semibold text-slate-500">jk earn (Est.)</div>
-                    <div className="text-base font-semibold text-slate-700">{formatMoney(jkEarnsCashflow)} in cashflow</div>
+                    <div className="text-base font-semibold text-slate-700">
+                      {formatMoney(jkEarnsCashflow)} in cashflow
+                    </div>
                   </div>
                 </div>
               </div>

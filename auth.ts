@@ -11,12 +11,7 @@ declare module 'next-auth' {
   }
 }
 
-const requiredEnv = [
-  'OIDC_ISSUER',
-  'OAUTH_CLIENT_ID',
-  'OAUTH_CLIENT_SECRET',
-  'SESSION_SECRET',
-] as const;
+const requiredEnv = ['OIDC_ISSUER', 'OAUTH_CLIENT_ID', 'OAUTH_CLIENT_SECRET', 'SESSION_SECRET'] as const;
 
 for (const key of requiredEnv) {
   if (!process.env[key]) {

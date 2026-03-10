@@ -20,7 +20,9 @@ type BrowseBenefit = {
   expiryDate: Date | null;
   cashbackType: 'PERCENTAGE' | 'ONE_TIME_CASH';
   cashbackAmount: number;
+  quotaType: 'CAP' | 'COUNT';
   usageAvailable: number | null;
+  usageUsed: number;
   minimumSpending: number | null;
   maximumSpending: number | null;
   applicableWeekdays: string[];
@@ -37,6 +39,9 @@ type AnyBenefitOption = {
   benefitName: string;
   cashbackType: BrowseBenefit['cashbackType'];
   cashbackAmount: number;
+  quotaType: BrowseBenefit['quotaType'];
+  usageAvailable: number | null;
+  usageUsed: number;
   minimumSpending: number | null;
   maximumSpending: number | null;
   purchaseChannel: BrowseBenefit['purchaseChannel'];
@@ -49,10 +54,7 @@ export default async function BrowsePage() {
 
   const dbBenefits = await prisma.benefit.findMany({
     where: {
-      OR: [
-        { expiryDate: null },
-        { expiryDate: { gte: new Date() } }
-      ]
+      OR: [{ expiryDate: null }, { expiryDate: { gte: new Date() } }],
     },
     include: {
       cardLinks: {
@@ -69,7 +71,9 @@ export default async function BrowsePage() {
     expiryDate: benefit.expiryDate,
     cashbackType: benefit.cashbackType,
     cashbackAmount: Number(benefit.cashbackAmount),
+    quotaType: benefit.quotaType,
     usageAvailable: benefit.usageAvailable,
+    usageUsed: benefit.usageUsed,
     minimumSpending: benefit.minimumSpending === null ? null : Number(benefit.minimumSpending),
     maximumSpending: benefit.maximumSpending === null ? null : Number(benefit.maximumSpending),
     applicableWeekdays: benefit.applicableWeekdays,
@@ -86,7 +90,10 @@ export default async function BrowsePage() {
 
   const benefits = rawBenefits.filter((benefit: BrowseBenefit) => benefit.cardLinks.length > 0);
 
-  const formatSpendRange = (minimumSpending: { toString(): string } | null, maximumSpending: { toString(): string } | null) => {
+  const formatSpendRange = (
+    minimumSpending: { toString(): string } | null,
+    maximumSpending: { toString(): string } | null,
+  ) => {
     if (minimumSpending !== null && maximumSpending !== null) {
       return `$${minimumSpending.toString()} - $${maximumSpending.toString()}`;
     }
@@ -99,12 +106,15 @@ export default async function BrowsePage() {
     return null;
   };
 
-  const benefitsByCategory = benefits.reduce((acc: Record<string, BrowseBenefit[]>, benefit: BrowseBenefit) => {
-    const cat = benefit.categoryName || 'Uncategorized';
-    if (!acc[cat]) acc[cat] = [];
-    acc[cat].push(benefit);
-    return acc;
-  }, {} as Record<string, typeof benefits>);
+  const benefitsByCategory = benefits.reduce(
+    (acc: Record<string, BrowseBenefit[]>, benefit: BrowseBenefit) => {
+      const cat = benefit.categoryName || 'Uncategorized';
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(benefit);
+      return acc;
+    },
+    {} as Record<string, typeof benefits>,
+  );
 
   // Sort categories alphabetically
   const categories = Object.keys(benefitsByCategory).sort();
@@ -121,6 +131,9 @@ export default async function BrowsePage() {
     benefitName: benefit.categoryName,
     cashbackType: benefit.cashbackType,
     cashbackAmount: benefit.cashbackAmount,
+    quotaType: benefit.quotaType,
+    usageAvailable: benefit.usageAvailable,
+    usageUsed: benefit.usageUsed,
     minimumSpending: benefit.minimumSpending,
     maximumSpending: benefit.maximumSpending,
     purchaseChannel: benefit.purchaseChannel,
@@ -134,9 +147,11 @@ export default async function BrowsePage() {
     const anyBenefits = benefitsByCategory['Any'] || [];
     const percentages = anyBenefits.filter(
       (benefit: BrowseBenefit) =>
-        benefit.cashbackType === 'PERCENTAGE' && (benefit.purchaseChannel === channel || !benefit.purchaseChannel),
+        benefit.cashbackType === 'PERCENTAGE' &&
+        (benefit.purchaseChannel === channel || !benefit.purchaseChannel) &&
+        (benefit.usageAvailable === null || benefit.usageUsed < benefit.usageAvailable),
     );
-    
+
     const options = percentages.flatMap((benefit: BrowseBenefit) => {
       return benefit.cardLinks.map((link: BrowseCardLink): ChannelGroupOption => {
         const card = link.card;
@@ -160,7 +175,7 @@ export default async function BrowsePage() {
       if (!groups[key]) groups[key] = [];
       groups[key].push(opt);
     }
-    
+
     const maxes = Object.values(groups).map((group) => {
       const maxCb = Math.max(...group.map((option) => option.effectiveCashback));
       const best = group.filter((option) => option.effectiveCashback === maxCb);
@@ -169,15 +184,20 @@ export default async function BrowsePage() {
         ...bestBenefit,
         effectiveCashback: maxCb,
         benefitId: bestBenefit.id,
-        cardNames: Array.from(new Set(best.map((option) => option.cardName))).join(', ')
+        cardNames: Array.from(new Set(best.map((option) => option.cardName))).join(', '),
       };
     });
-    
+
     maxes.sort((a, b) => b.effectiveCashback - a.effectiveCashback);
     return maxes;
   };
 
-  const getMaxBenefitInfo = (channel: string, label: string, colorClass: string, Icon: ComponentType<{ className?: string }>) => {
+  const getMaxBenefitInfo = (
+    channel: string,
+    label: string,
+    colorClass: string,
+    Icon: ComponentType<{ className?: string }>,
+  ) => {
     const maxes = getChannelGroups(channel);
     if (!maxes || maxes.length === 0) return null;
     const b = maxes[0];
@@ -194,21 +214,21 @@ export default async function BrowsePage() {
             <div className="mt-2 flex flex-col items-start gap-1">
               <div className="flex items-baseline">
                 <span className="text-4xl font-bold">{b.effectiveCashback.toFixed(2).replace(/\.?0+$/, '')}%</span>
-                <span className="ml-2 text-sm font-medium text-white/80 uppercase tracking-wide">
-                  Cashback
-                </span>
+                <span className="ml-2 text-sm font-medium text-white/80 uppercase tracking-wide">Cashback</span>
               </div>
               <span className="text-sm font-medium text-white/80">with {b.cardNames}</span>
             </div>
           </div>
           <div className="mt-4 flex flex-col gap-1 text-sm text-white/90">
             {(b.minimumSpending !== null || b.maximumSpending !== null) && (
-              <div>
-                Spend: {formatSpendRange(b.minimumSpending, b.maximumSpending)}
-              </div>
+              <div>Spend: {formatSpendRange(b.minimumSpending, b.maximumSpending)}</div>
             )}
             {b.usageAvailable !== null && (
-              <div>Quota: {b.usageAvailable.toString()}</div>
+              <div>
+                Quota: {b.quotaType === 'CAP' && '$'}
+                {b.usageAvailable.toString()}
+                {b.quotaType === 'CAP' && ` (Cap: $${(b.usageAvailable / (b.effectiveCashback / 100)).toFixed(0)})`}
+              </div>
             )}
             <div className="pt-1">
               <AdoptButton
@@ -216,6 +236,9 @@ export default async function BrowsePage() {
                 benefitName={b.categoryName}
                 cashbackType={b.cashbackType}
                 cashbackAmount={b.cashbackAmount}
+                quotaType={b.quotaType}
+                usageAvailable={b.usageAvailable}
+                usageUsed={b.usageUsed}
                 minimumSpending={b.minimumSpending}
                 maximumSpending={b.maximumSpending}
                 cardOptions={b.cardLinks.map((link: BrowseCardLink) => ({
@@ -236,10 +259,14 @@ export default async function BrowsePage() {
                 {others.map((other, idx) => {
                   const rangeStr = formatSpendRange(other.minimumSpending, other.maximumSpending) ?? 'Any Spending';
                   return (
-                    <tr key={idx} className={idx !== others.length - 1 ? "border-b border-slate-100" : ""}>
+                    <tr key={idx} className={idx !== others.length - 1 ? 'border-b border-slate-100' : ''}>
                       <td className="px-5 py-3 whitespace-nowrap text-slate-600 font-medium">{rangeStr}</td>
                       <td className="px-5 py-3 text-slate-600 truncate max-w-[120px]">{other.cardNames}</td>
-                      <td className={`px-5 py-3 whitespace-nowrap font-bold text-right ${colorClass.includes('blue') ? 'text-blue-600' : colorClass.includes('emerald') ? 'text-emerald-600' : 'text-purple-600'}`}>{other.effectiveCashback.toFixed(2).replace(/\.?0+$/, '')}%</td>
+                      <td
+                        className={`px-5 py-3 whitespace-nowrap font-bold text-right ${colorClass.includes('blue') ? 'text-blue-600' : colorClass.includes('emerald') ? 'text-emerald-600' : 'text-purple-600'}`}
+                      >
+                        {other.effectiveCashback.toFixed(2).replace(/\.?0+$/, '')}%
+                      </td>
                     </tr>
                   );
                 })}
@@ -279,19 +306,26 @@ export default async function BrowsePage() {
                         </span>
                       </div>
                       {benefit.purchaseChannel && (
-                        <div className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          benefit.purchaseChannel === 'ONLINE_PURCHASE' ? 'bg-blue-100 text-blue-800' :
-                          benefit.purchaseChannel === 'OFFLINE_PURCHASE' ? 'bg-green-100 text-green-800' :
-                          'bg-purple-100 text-purple-800'
-                        }`}>
-                          {benefit.purchaseChannel === 'ONLINE_PURCHASE' ? 'Online Only' :
-                           benefit.purchaseChannel === 'OFFLINE_PURCHASE' ? 'Offline Only' :
-                           'Foreign Currency Only'}
+                        <div
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            benefit.purchaseChannel === 'ONLINE_PURCHASE'
+                              ? 'bg-blue-100 text-blue-800'
+                              : benefit.purchaseChannel === 'OFFLINE_PURCHASE'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-purple-100 text-purple-800'
+                          }`}
+                        >
+                          {benefit.purchaseChannel === 'ONLINE_PURCHASE'
+                            ? 'Online Only'
+                            : benefit.purchaseChannel === 'OFFLINE_PURCHASE'
+                              ? 'Offline Only'
+                              : 'Foreign Currency Only'}
                         </div>
                       )}
                       {benefit.expiryDate && (
                         <div className="text-sm font-medium text-amber-600">
-                          {Math.max(0, Math.ceil((benefit.expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))} days remaining
+                          {Math.max(0, Math.ceil((benefit.expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))}{' '}
+                          days remaining
                         </div>
                       )}
                     </div>
@@ -300,7 +334,9 @@ export default async function BrowsePage() {
                       {benefit.cardLinks.length > 0 && (
                         <div className="flex gap-2">
                           <span className="font-medium text-slate-900 min-w-[70px]">Cards:</span>
-                          <span className="text-slate-700">{benefit.cardLinks.map((link: BrowseCardLink) => link.card.name).join(', ')}</span>
+                          <span className="text-slate-700">
+                            {benefit.cardLinks.map((link: BrowseCardLink) => link.card.name).join(', ')}
+                          </span>
                         </div>
                       )}
 
@@ -314,7 +350,10 @@ export default async function BrowsePage() {
                       {benefit.usageAvailable !== null && (
                         <div className="flex gap-2">
                           <span className="font-medium text-slate-900 min-w-[70px]">Quota:</span>
-                          <span className="text-slate-700">{benefit.usageAvailable.toString()}</span>
+                          <span className="text-slate-700">
+                            {benefit.quotaType === 'CAP' && '$'}
+                            {benefit.usageAvailable.toString()}
+                          </span>
                         </div>
                       )}
 
@@ -346,6 +385,9 @@ export default async function BrowsePage() {
                             benefitName={benefit.categoryName}
                             cashbackType={benefit.cashbackType}
                             cashbackAmount={benefit.cashbackAmount}
+                            quotaType={benefit.quotaType}
+                            usageAvailable={benefit.usageAvailable}
+                            usageUsed={benefit.usageUsed}
                             minimumSpending={benefit.minimumSpending}
                             maximumSpending={benefit.maximumSpending}
                             cardOptions={benefit.cardLinks.map((link: BrowseCardLink) => ({
@@ -356,6 +398,9 @@ export default async function BrowsePage() {
                               benefitName: typeBenefit.categoryName,
                               cashbackType: typeBenefit.cashbackType,
                               cashbackAmount: typeBenefit.cashbackAmount,
+                              quotaType: typeBenefit.quotaType,
+                              usageAvailable: typeBenefit.usageAvailable,
+                              usageUsed: typeBenefit.usageUsed,
                               minimumSpending: typeBenefit.minimumSpending,
                               maximumSpending: typeBenefit.maximumSpending,
                               purchaseChannel: typeBenefit.purchaseChannel,
@@ -376,10 +421,8 @@ export default async function BrowsePage() {
 
             return (
               <section key={category} className="space-y-4">
-                <h2 className="text-xl font-medium text-slate-800 border-b border-slate-200 pb-2">
-                  {category}
-                </h2>
-                
+                <h2 className="text-xl font-medium text-slate-800 border-b border-slate-200 pb-2">{category}</h2>
+
                 {category === 'Any' && (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
                     {getMaxBenefitInfo('ONLINE_PURCHASE', 'Online', 'from-blue-500 to-cyan-600', Globe)}

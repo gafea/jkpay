@@ -4,10 +4,7 @@ const ensureProtocol = (value: string) => {
   }
 
   const host = value.trim().toLowerCase();
-  const isLocalHost =
-    host.startsWith('localhost') ||
-    host.startsWith('127.0.0.1') ||
-    host.startsWith('[::1]');
+  const isLocalHost = host.startsWith('localhost') || host.startsWith('127.0.0.1') || host.startsWith('[::1]');
 
   return `${isLocalHost ? 'http' : 'https'}://${value}`;
 };
