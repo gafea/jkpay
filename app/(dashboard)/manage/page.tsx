@@ -1,17 +1,19 @@
 import { ensureOwnerAccess } from '@/lib/access';
 import { prisma } from '@/lib/prisma';
+import {
+  type BenefitManageRow,
+  type CardManageRow,
+  CHANNEL_OPTIONS,
+  WEEKDAY_OPTIONS,
+  type BenefitForm,
+  type FriendAccessManageRow,
+  type Card,
+  type Friend,
+  type ServerVariableCard,
+} from '@/app/types';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ManageGrid } from './manage-grid';
-
-const WEEKDAY_OPTIONS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-const CHANNEL_OPTIONS = ['ONLINE_PURCHASE', 'OFFLINE_PURCHASE', 'FOREIGN_CURRENCY'];
-
-type ServerVariableCard = {
-  key: string;
-  value: string;
-  readOnly: boolean;
-};
 
 const getEnvFileKeys = () => {
   const envPath = join(process.cwd(), '.env');
@@ -51,9 +53,6 @@ export default async function ManagePage() {
       },
     }),
   ]);
-  type FriendRow = (typeof friends)[number];
-  type CardRow = (typeof cards)[number];
-  type BenefitRow = (typeof benefits)[number];
   const envKeys = getEnvFileKeys();
   const serverVariables: ServerVariableCard[] = envKeys
     .map((key) => {
@@ -74,37 +73,43 @@ export default async function ManagePage() {
 
   return (
     <ManageGrid
-      friends={friends.map((friend: FriendRow) => ({
-        id: friend.id,
-        email: friend.friend.email,
-        nickname: friend.nickname ?? '',
-        fcmToken: friend.fcmToken ?? '',
-        activeUntil: friend.activeUntil ? friend.activeUntil.toISOString().slice(0, 10) : '',
-        isDisabled: friend.isDisabled,
-      }))}
-      cards={cards.map((card: CardRow) => ({
-        id: card.id,
-        name: card.name,
-        fcyFee: card.fcyFee?.toString() ?? '',
-        isCredit: card.isCredit,
-        isDisabled: card.isDisabled,
-      }))}
-      benefits={benefits.map((benefit: BenefitRow) => ({
-        id: benefit.id,
-        categoryName: benefit.categoryName,
-        expiryDate: benefit.expiryDate?.toISOString().slice(0, 10) ?? '',
-        cashbackType: benefit.cashbackType,
-        cashbackAmount: benefit.cashbackAmount.toString(),
-        quotaType: benefit.quotaType,
-        usageAvailable: benefit.usageAvailable?.toString() ?? '',
-        usageUsed: benefit.usageUsed,
-        quotaResetsMonthly: benefit.quotaResetsMonthly,
-        minimumSpending: benefit.minimumSpending?.toString() ?? '',
-        maximumSpending: benefit.maximumSpending?.toString() ?? '',
-        applicableWeekdays: benefit.applicableWeekdays,
-        purchaseChannel: benefit.purchaseChannel || '',
-        linkedCardIds: benefit.cardLinks.map((link: BenefitRow['cardLinks'][number]) => link.cardId),
-      }))}
+      friends={
+        friends.map((friend: FriendAccessManageRow) => ({
+          id: friend.id,
+          email: friend.friend.email,
+          nickname: friend.nickname ?? '',
+          fcmToken: friend.fcmToken ?? '',
+          activeUntil: friend.activeUntil ? friend.activeUntil.toISOString().slice(0, 10) : '',
+          isDisabled: friend.isDisabled,
+        })) as Friend[]
+      }
+      cards={
+        cards.map((card: CardManageRow) => ({
+          id: card.id,
+          name: card.name,
+          fcyFee: card.fcyFee?.toString() ?? '',
+          isCredit: card.isCredit,
+          isDisabled: card.isDisabled,
+        })) as Array<Omit<Card, 'fcyFee'> & { fcyFee: string }>
+      }
+      benefits={
+        benefits.map((benefit: BenefitManageRow) => ({
+          id: benefit.id,
+          categoryName: benefit.categoryName,
+          expiryDate: benefit.expiryDate?.toISOString().slice(0, 10) ?? '',
+          cashbackType: benefit.cashbackType,
+          cashbackAmount: benefit.cashbackAmount.toString(),
+          quotaType: benefit.quotaType,
+          usageAvailable: benefit.usageAvailable?.toString() ?? '',
+          usageUsed: benefit.usageUsed,
+          quotaResetsMonthly: benefit.quotaResetsMonthly,
+          minimumSpending: benefit.minimumSpending?.toString() ?? '',
+          maximumSpending: benefit.maximumSpending?.toString() ?? '',
+          applicableWeekdays: benefit.applicableWeekdays,
+          purchaseChannel: benefit.purchaseChannel || '',
+          linkedCardIds: benefit.cardLinks.map((link: BenefitManageRow['cardLinks'][number]) => link.cardId),
+        })) as BenefitForm[]
+      }
       weekdayOptions={WEEKDAY_OPTIONS}
       channelOptions={CHANNEL_OPTIONS}
       serverVariables={serverVariables}

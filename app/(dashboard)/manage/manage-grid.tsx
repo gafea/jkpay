@@ -9,57 +9,17 @@ import {
   saveFriend,
   saveServerVariables,
 } from '@/app/actions/manage';
+import type { BenefitForm, Card, Friend, ManageGridProps, PurchaseChannel, Row, Weekday } from '@/app/types';
 import { Trash2, GripVertical, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
-type FriendInput = {
-  id: string;
-  email: string;
-  nickname: string;
-  fcmToken: string;
-  activeUntil: string;
-  isDisabled: boolean;
-};
-
-type CardInput = {
-  id: string;
-  name: string;
-  fcyFee: string;
-  isCredit: boolean;
-  isDisabled: boolean;
-};
-
-type BenefitInput = {
-  id: string;
-  categoryName: string;
-  expiryDate: string;
-  cashbackType: 'PERCENTAGE' | 'ONE_TIME_CASH';
-  cashbackAmount: string;
-  quotaType: 'CAP' | 'COUNT';
-  usageAvailable: string;
-  usageUsed?: number;
-  quotaResetsMonthly: boolean;
-  minimumSpending: string;
-  maximumSpending: string;
-  applicableWeekdays: string[];
-  purchaseChannel: string;
-  linkedCardIds: string[];
-};
-
-type Row<T> = T & { _key: string };
-
-type ManageGridProps = {
-  friends: FriendInput[];
-  cards: CardInput[];
-  benefits: BenefitInput[];
-  weekdayOptions: string[];
-  channelOptions: string[];
-  serverVariables: Array<{ key: string; value: string; readOnly: boolean }>;
-};
-
 const createKey = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+type FriendInput = Friend;
+type CardInput = Omit<Card, 'fcyFee'> & { fcyFee: string };
+type BenefitInput = BenefitForm;
 
 const withKey = <T,>(items: T[]): Row<T>[] => items.map((item) => ({ ...item, _key: createKey() }));
 
@@ -1149,7 +1109,7 @@ export const ManageGrid = ({
                           label: d,
                         }))}
                         selected={row.applicableWeekdays}
-                        onChange={(vals) => onBenefitChange(index, { applicableWeekdays: vals })}
+                        onChange={(vals) => onBenefitChange(index, { applicableWeekdays: vals as Weekday[] })}
                         placeholder="All days"
                       />
                     </td>
@@ -1158,7 +1118,7 @@ export const ManageGrid = ({
                         value={row.purchaseChannel || ''}
                         onChange={(e) =>
                           onBenefitChange(index, {
-                            purchaseChannel: e.target.value,
+                            purchaseChannel: e.target.value as PurchaseChannel | '',
                           })
                         }
                         className={`${selectCls} min-w-[140px] appearance-none max-w-[150px] overflow-hidden text-ellipsis`}
@@ -1345,7 +1305,7 @@ export const ManageGrid = ({
                             label: d,
                           }))}
                           selected={row.applicableWeekdays}
-                          onChange={(vals) => onBenefitChange(index, { applicableWeekdays: vals })}
+                          onChange={(vals) => onBenefitChange(index, { applicableWeekdays: vals as Weekday[] })}
                           placeholder="All days"
                         />
                       </td>
@@ -1354,7 +1314,7 @@ export const ManageGrid = ({
                           value={row.purchaseChannel || ''}
                           onChange={(e) =>
                             onBenefitChange(index, {
-                              purchaseChannel: e.target.value,
+                              purchaseChannel: e.target.value as PurchaseChannel | '',
                             })
                           }
                           className={`${selectCls} min-w-[140px] appearance-none max-w-[150px] overflow-hidden text-ellipsis`}

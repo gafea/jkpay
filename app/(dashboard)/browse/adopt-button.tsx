@@ -1,76 +1,32 @@
 'use client';
 
 import { createBenefitRequest } from '@/app/actions/history';
+import {
+  CHANNEL_SERIES_META,
+  DATA_KEY_TO_CHANNEL,
+  PURCHASE_CHANNELS,
+  cashbackColorClass,
+  formatMoney,
+  formatRate,
+  formatSpendRange,
+  type AdoptButtonProps,
+  type AnyBenefitOption,
+  type BenefitTypeOption,
+  type PurchaseChannel,
+} from '@/app/types';
 import { X } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-
-type PurchaseChannel = 'ONLINE_PURCHASE' | 'OFFLINE_PURCHASE' | 'FOREIGN_CURRENCY';
-const PURCHASE_CHANNELS: PurchaseChannel[] = ['ONLINE_PURCHASE', 'OFFLINE_PURCHASE', 'FOREIGN_CURRENCY'];
-type CashbackType = 'PERCENTAGE' | 'ONE_TIME_CASH';
-
-type CardOption = {
-  name: string;
-  fcyFee: number | null;
-  isCredit: boolean;
-};
-
-type AnyBenefitOption = {
-  benefitName: string;
-  cashbackType: CashbackType;
-  cashbackAmount: number;
-  quotaType: 'CAP' | 'COUNT';
-  usageAvailable: number | null;
-  usageUsed: number;
-  minimumSpending: number | null;
-  maximumSpending: number | null;
-  purchaseChannel: PurchaseChannel | null;
-  cardOptions: CardOption[];
-};
-
-type BenefitTypeOption = AnyBenefitOption;
-
-type AdoptButtonProps = {
-  benefitId: string;
-  benefitName: string;
-  cashbackType: CashbackType;
-  cashbackAmount: number;
-  quotaType: 'CAP' | 'COUNT';
-  usageAvailable: number | null;
-  usageUsed: number;
-  minimumSpending: number | null;
-  maximumSpending: number | null;
-  cardOptions: CardOption[];
-  isAnyBenefit?: boolean;
-  anyBenefitOptions?: AnyBenefitOption[];
-  sameTypeBenefitOptions?: BenefitTypeOption[];
-  defaultChannel?: PurchaseChannel | null;
-  compact?: boolean;
-};
-
-const formatMoney = (value: number) => `$${value.toFixed(2)}`;
-
-const formatRate = (value: number) => `${value.toFixed(2).replace(/\.?0+$/, '')}%`;
-
-const formatSpendRange = (minimumSpending: number | null, maximumSpending: number | null) => {
-  if (minimumSpending !== null && maximumSpending !== null) {
-    return `$${minimumSpending.toFixed(2)} - $${maximumSpending.toFixed(2)}`;
-  }
-  if (minimumSpending !== null) {
-    return `>$${minimumSpending.toFixed(2)}`;
-  }
-  if (maximumSpending !== null) {
-    return `<$${maximumSpending.toFixed(2)}`;
-  }
-  return 'Any Spending';
-};
-
-const cashbackColorClass = (channel: PurchaseChannel | null) => {
-  if (channel === 'ONLINE_PURCHASE') return 'text-blue-600';
-  if (channel === 'OFFLINE_PURCHASE') return 'text-emerald-600';
-  if (channel === 'FOREIGN_CURRENCY') return 'text-purple-600';
-  return 'text-indigo-600';
-};
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 export const AdoptButton = ({
   benefitId,
@@ -206,14 +162,27 @@ export const AdoptButton = ({
   const activeCandidates = cumulativeCandidates.filter((candidate) => candidate.eligible);
 
   const selectedOrDefaultChannel: PurchaseChannel | null = defaultChannel ?? (purchaseChannel || null);
+  const showMultiChannelChart = purchaseChannel === '';
+  const selectedChartChannel = purchaseChannel === '' ? null : (purchaseChannel as PurchaseChannel);
+  const selectedChartSeriesMeta = selectedChartChannel ? CHANNEL_SERIES_META[selectedChartChannel] : null;
+  const handleLegendClick = (legendEntry: unknown) => {
+    if (!legendEntry || typeof legendEntry !== 'object') return;
+
+    const maybeDataKey = (legendEntry as { dataKey?: string }).dataKey;
+    if (!maybeDataKey) return;
+
+    if (maybeDataKey === 'onlineCashback' || maybeDataKey === 'offlineCashback' || maybeDataKey === 'foreignCashback') {
+      setPurchaseChannel(DATA_KEY_TO_CHANNEL[maybeDataKey]);
+    }
+  };
 
   const chartData = useMemo(() => {
-    const getEstimatedCashbackAtAmount = (simulatedAmount: number) => {
+    const getEstimatedCashbackAtAmount = (simulatedAmount: number, simulatedChannel: PurchaseChannel) => {
       const simulatedCandidates = sourceOptions.flatMap((option) =>
         option.cardOptions.map((card) => {
           const effectiveRate =
             option.cashbackType === 'PERCENTAGE'
-              ? Math.max(0, option.cashbackAmount - (purchaseChannel === 'FOREIGN_CURRENCY' ? (card.fcyFee ?? 0) : 0))
+              ? Math.max(0, option.cashbackAmount - (simulatedChannel === 'FOREIGN_CURRENCY' ? (card.fcyFee ?? 0) : 0))
               : option.cashbackAmount;
 
           const earnAmount =
@@ -225,7 +194,7 @@ export const AdoptButton = ({
           const passMin = option.minimumSpending === null || simulatedAmount >= option.minimumSpending;
           const passMax = option.maximumSpending === null || simulatedAmount <= option.maximumSpending;
           const passSpend = passMin && passMax;
-          const passChannel = matchesChannel(option.purchaseChannel);
+          const passChannel = option.purchaseChannel === null || option.purchaseChannel === simulatedChannel;
 
           const quotaAdjustedEarn =
             option.quotaType === 'COUNT'
@@ -334,15 +303,22 @@ export const AdoptButton = ({
 
     return Array.from(generated.values())
       .map((amountValue) => {
-        const estimate = getEstimatedCashbackAtAmount(amountValue);
+        const onlineEstimate = getEstimatedCashbackAtAmount(amountValue, 'ONLINE_PURCHASE');
+        const offlineEstimate = getEstimatedCashbackAtAmount(amountValue, 'OFFLINE_PURCHASE');
+        const foreignEstimate = getEstimatedCashbackAtAmount(amountValue, 'FOREIGN_CURRENCY');
+
         return {
           amount: amountValue,
-          totalCashback: estimate.totalCashback,
-          bestCardName: estimate.bestCardName,
+          onlineCashback: onlineEstimate.totalCashback,
+          offlineCashback: offlineEstimate.totalCashback,
+          foreignCashback: foreignEstimate.totalCashback,
+          onlineBestCardName: onlineEstimate.bestCardName,
+          offlineBestCardName: offlineEstimate.bestCardName,
+          foreignBestCardName: foreignEstimate.bestCardName,
         };
       })
       .sort((left, right) => left.amount - right.amount);
-  }, [amount, isAnyBenefit, purchaseChannel, sourceOptions]);
+  }, [amount, isAnyBenefit, sourceOptions]);
 
   const chartMaxAmount = chartData[chartData.length - 1]?.amount ?? 1;
   const redLineAmount = hasValidAmount ? Math.min(amount, chartMaxAmount) : null;
@@ -410,7 +386,9 @@ export const AdoptButton = ({
   const jkEarnsCashflow = hasValidAmount ? Math.max(0, totalNeedToPay) : 0;
 
   const jkEarnDisplay =
-    effectiveBest && !effectiveBest.isCredit ? 'nothing' : `${formatMoney(jkEarnsCashflow)} in cashflow`;
+    jkEarnsCashflow == 0 || (effectiveBest && !effectiveBest.isCredit)
+      ? 'nothing'
+      : `$${jkEarnsCashflow.toFixed(0)} in cashflow`;
 
   return (
     <>
@@ -481,7 +459,13 @@ export const AdoptButton = ({
                     <option value="">Select channel</option>
                     {PURCHASE_CHANNELS.map((channel) => (
                       <option key={channel} value={channel}>
-                        {channel}
+                        {channel === 'ONLINE_PURCHASE'
+                          ? 'Online'
+                          : channel === 'OFFLINE_PURCHASE'
+                            ? 'Offline'
+                            : channel === 'FOREIGN_CURRENCY'
+                              ? 'Foreign Currency'
+                              : channel}
                       </option>
                     ))}
                   </select>
@@ -539,9 +523,19 @@ export const AdoptButton = ({
                       <Tooltip
                         content={({ active, payload, label }) => {
                           if (!active || !payload || payload.length === 0) return null;
-                          const primary = payload.find((entry) => entry.dataKey === 'totalCashback') ?? payload[0];
+                          const primary = selectedChartSeriesMeta
+                            ? (payload.find((entry) => entry.dataKey === selectedChartSeriesMeta.dataKey) ?? payload[0])
+                            : payload[0];
                           const point = primary?.payload as
-                            | { amount?: number; totalCashback?: number; bestCardName?: string }
+                            | {
+                                amount?: number;
+                                onlineCashback?: number;
+                                offlineCashback?: number;
+                                foreignCashback?: number;
+                                onlineBestCardName?: string;
+                                offlineBestCardName?: string;
+                                foreignBestCardName?: string;
+                              }
                             | undefined;
                           const labelAsNumber = typeof label === 'number' ? label : Number(label ?? 0);
                           const amountValue = Number.isFinite(point?.amount)
@@ -549,35 +543,106 @@ export const AdoptButton = ({
                             : Number.isFinite(labelAsNumber)
                               ? labelAsNumber
                               : 0;
-                          const rawCashback =
-                            typeof primary?.value === 'number'
-                              ? primary.value
-                              : Number(primary?.value ?? point?.totalCashback ?? 0);
-                          const cashbackValue = Number.isFinite(rawCashback) ? rawCashback : 0;
-                          const bestCardName = point?.bestCardName ?? 'No eligible card';
-                          const savingsPct = amountValue > 0 ? (cashbackValue / amountValue) * 100 : 0;
+
+                          const getTooltipLine = (channel: PurchaseChannel) => {
+                            const meta = CHANNEL_SERIES_META[channel];
+                            const entry = payload.find((item) => item.dataKey === meta.dataKey);
+                            const rawCashback =
+                              typeof entry?.value === 'number'
+                                ? entry.value
+                                : Number((point?.[meta.dataKey] as number | undefined) ?? 0);
+                            const cashbackValue = Number.isFinite(rawCashback) ? rawCashback : 0;
+                            const bestCardName = (point?.[meta.cardKey] as string | undefined) ?? 'No eligible card';
+                            const savingsPct = amountValue > 0 ? (cashbackValue / amountValue) * 100 : 0;
+                            return {
+                              ...meta,
+                              cashbackValue,
+                              bestCardName,
+                              savingsPct,
+                            };
+                          };
+
+                          const tooltipLines = selectedChartChannel
+                            ? [getTooltipLine(selectedChartChannel)]
+                            : PURCHASE_CHANNELS.map((channel) => getTooltipLine(channel));
+
+                          if (showMultiChannelChart) {
+                            return (
+                              <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
+                                <div className="font-semibold text-slate-800">
+                                  Spendings: ${Math.round(amountValue)}
+                                </div>
+                                {tooltipLines.map((line) => (
+                                  <div key={line.label} style={{ color: line.color }}>
+                                    {line.label === 'Foreign Currency' ? 'FX' : line.label}: -
+                                    {formatMoney(line.cashbackValue)} ({line.savingsPct.toFixed(1)}%)
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
 
                           return (
                             <div className="rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-sm">
-                              <div className="font-semibold text-slate-800">
-                                Savings: {formatMoney(cashbackValue)} ({savingsPct.toFixed(1)}%)
-                              </div>
                               <div className="text-slate-600">Spendings: ${Math.round(amountValue)}</div>
-                              <div className="text-slate-500">with {bestCardName}</div>
+                              <div className="mt-1 space-y-1">
+                                {tooltipLines.map((line) => (
+                                  <div key={line.label}>
+                                    <div className="font-semibold" style={{ color: line.color }}>
+                                      Savings: {formatMoney(line.cashbackValue)} ({line.savingsPct.toFixed(1)}%)
+                                    </div>
+                                    <div className="text-slate-500">with {line.bestCardName}</div>
+                                  </div>
+                                ))}
+                              </div>
                             </div>
                           );
                         }}
                       />
-                      <Line
-                        type={isAnyBenefit ? 'stepAfter' : 'linear'}
-                        dataKey="totalCashback"
-                        name="Total cashback"
-                        stroke="currentColor"
-                        className="text-slate-700"
-                        strokeWidth={2}
-                        dot={false}
-                        activeDot={{ r: 4 }}
-                      />
+                      {showMultiChannelChart ? (
+                        <>
+                          <Line
+                            type={isAnyBenefit ? 'stepAfter' : 'linear'}
+                            dataKey={CHANNEL_SERIES_META.ONLINE_PURCHASE.dataKey}
+                            name={CHANNEL_SERIES_META.ONLINE_PURCHASE.label}
+                            stroke={CHANNEL_SERIES_META.ONLINE_PURCHASE.color}
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 4 }}
+                          />
+                          <Line
+                            type={isAnyBenefit ? 'stepAfter' : 'linear'}
+                            dataKey={CHANNEL_SERIES_META.OFFLINE_PURCHASE.dataKey}
+                            name={CHANNEL_SERIES_META.OFFLINE_PURCHASE.label}
+                            stroke={CHANNEL_SERIES_META.OFFLINE_PURCHASE.color}
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 4 }}
+                          />
+                          <Line
+                            type={isAnyBenefit ? 'stepAfter' : 'linear'}
+                            dataKey={CHANNEL_SERIES_META.FOREIGN_CURRENCY.dataKey}
+                            name={CHANNEL_SERIES_META.FOREIGN_CURRENCY.label}
+                            stroke={CHANNEL_SERIES_META.FOREIGN_CURRENCY.color}
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 4 }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 12, cursor: 'pointer' }} onClick={handleLegendClick} />
+                        </>
+                      ) : (
+                        selectedChartSeriesMeta && (
+                          <Line
+                            type={isAnyBenefit ? 'stepAfter' : 'linear'}
+                            dataKey={selectedChartSeriesMeta.dataKey}
+                            name={selectedChartSeriesMeta.label}
+                            stroke={selectedChartSeriesMeta.color}
+                            strokeWidth={2}
+                            dot={false}
+                            activeDot={{ r: 4 }}
+                          />
+                        )
+                      )}
                       {redLineAmount !== null && (
                         <ReferenceLine
                           x={redLineAmount}
@@ -650,29 +715,30 @@ export const AdoptButton = ({
                   </table>
                 </div>
 
-                <div className="mb-2 overflow-hidden rounded-md border border-slate-200 bg-white">
-                  <div className="grid grid-cols-2 gap-2 py-3">
-                    <div className="px-5 flex items-center text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      Total Payment (Est.)
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="rounded-md px-4 py-2">
+                    <div className="font-semibold text-slate-500">
+                      Total Payment <span className="text-xs text-slate-400">(est.)</span>
                     </div>
-                    <div className="px-5 flex items-center text-xl font-semibold text-slate-800">
-                      {formatMoney(totalNeedToPay)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-md px-5 py-2">
-                    <div className="font-semibold text-slate-500">You earn (Est.)</div>
                     <div className="text-base font-semibold text-slate-700">
-                      {formatMoney(youEarns)}
-                      <span className="ml-2 text-sm font-medium text-emerald-600">
-                        ({savingsPct.toFixed(1)}% savings)
-                      </span>
+                      ${totalNeedToPay.toFixed(totalNeedToPay >= 10000 ? 1 : 2)}
                     </div>
                   </div>
-                  <div className="rounded-md px-5 py-2">
-                    <div className="font-semibold text-slate-500">jk earns (Est.)</div>
+                  <div className="rounded-md px-4 py-2">
+                    <div className="font-semibold text-slate-500">
+                      You earn <span className="text-xs text-slate-400">(est.)</span>
+                    </div>
+                    <div className="text-base font-semibold text-slate-700">
+                      ${youEarns.toFixed(totalNeedToPay >= 10000 ? 1 : 2)}
+                      {savingsPct > 0 && (
+                        <span className="ml-2 text-sm font-medium text-emerald-600">({savingsPct.toFixed(1)}%)</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="rounded-md px-4 py-2">
+                    <div className="font-semibold text-slate-500">
+                      jk earns <span className="text-xs text-slate-400">(est.)</span>
+                    </div>
                     <div className="text-base font-semibold text-slate-700">{jkEarnDisplay}</div>
                   </div>
                 </div>

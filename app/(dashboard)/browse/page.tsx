@@ -1,55 +1,17 @@
 import { ensureBrowseHistoryAccess } from '@/lib/access';
 import { resetMonthlyBenefitUsage } from '@/lib/benefits';
 import { prisma } from '@/lib/prisma';
+import type {
+  AnyBenefitOption,
+  Benefit,
+  BenefitCardLink,
+  ChannelCardConfig,
+  ChannelGroupOption,
+  PurchaseChannel,
+} from '@/app/types';
 import { Globe, Store, Plane } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { AdoptButton } from './adopt-button';
-
-type BrowseCardLink = {
-  cardId: string;
-  card: {
-    id: string;
-    name: string;
-    fcyFee: number | null;
-    isCredit: boolean;
-  };
-};
-
-type BrowseBenefit = {
-  id: string;
-  categoryName: string;
-  expiryDate: Date | null;
-  cashbackType: 'PERCENTAGE' | 'ONE_TIME_CASH';
-  cashbackAmount: number;
-  quotaType: 'CAP' | 'COUNT';
-  usageAvailable: number | null;
-  usageUsed: number;
-  minimumSpending: number | null;
-  maximumSpending: number | null;
-  applicableWeekdays: string[];
-  purchaseChannel: 'ONLINE_PURCHASE' | 'OFFLINE_PURCHASE' | 'FOREIGN_CURRENCY' | null;
-  cardLinks: BrowseCardLink[];
-};
-
-type ChannelGroupOption = BrowseBenefit & {
-  effectiveCashback: number;
-  cardName: string;
-};
-
-type AnyBenefitOption = {
-  benefitName: string;
-  cashbackType: BrowseBenefit['cashbackType'];
-  cashbackAmount: number;
-  quotaType: BrowseBenefit['quotaType'];
-  usageAvailable: number | null;
-  usageUsed: number;
-  minimumSpending: number | null;
-  maximumSpending: number | null;
-  purchaseChannel: BrowseBenefit['purchaseChannel'];
-  cardOptions: { name: string; fcyFee: number | null; isCredit: boolean }[];
-};
-
-type PurchaseChannel = 'ONLINE_PURCHASE' | 'OFFLINE_PURCHASE' | 'FOREIGN_CURRENCY';
 
 export default async function BrowsePage() {
   await ensureBrowseHistoryAccess();
@@ -68,7 +30,7 @@ export default async function BrowsePage() {
     orderBy: { createdAt: 'desc' },
   });
 
-  const rawBenefits: BrowseBenefit[] = dbBenefits.map((benefit: (typeof dbBenefits)[number]) => ({
+  const rawBenefits: Benefit[] = dbBenefits.map((benefit: (typeof dbBenefits)[number]) => ({
     id: benefit.id,
     categoryName: benefit.categoryName,
     expiryDate: benefit.expiryDate,
@@ -77,6 +39,7 @@ export default async function BrowsePage() {
     quotaType: benefit.quotaType,
     usageAvailable: benefit.usageAvailable,
     usageUsed: benefit.usageUsed,
+    quotaResetsMonthly: benefit.quotaResetsMonthly,
     minimumSpending: benefit.minimumSpending === null ? null : Number(benefit.minimumSpending),
     maximumSpending: benefit.maximumSpending === null ? null : Number(benefit.maximumSpending),
     applicableWeekdays: benefit.applicableWeekdays,
@@ -92,7 +55,7 @@ export default async function BrowsePage() {
     })),
   }));
 
-  const benefits = rawBenefits.filter((benefit: BrowseBenefit) => benefit.cardLinks.length > 0);
+  const benefits = rawBenefits.filter((benefit: Benefit) => benefit.cardLinks.length > 0);
 
   const formatSpendRange = (
     minimumSpending: { toString(): string } | null,
@@ -111,20 +74,20 @@ export default async function BrowsePage() {
   };
 
   const benefitsByCategory = benefits.reduce(
-    (acc: Record<string, BrowseBenefit[]>, benefit: BrowseBenefit) => {
+    (acc: Record<string, Benefit[]>, benefit: Benefit) => {
       const cat = benefit.categoryName || 'Uncategorized';
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(benefit);
       return acc;
     },
-    {} as Record<string, typeof benefits>,
+    {} as Record<string, Benefit[]>,
   );
 
   // Sort categories alphabetically
   const categories = Object.keys(benefitsByCategory).sort();
 
   for (const cat of categories) {
-    benefitsByCategory[cat].sort((a: BrowseBenefit, b: BrowseBenefit) => {
+    benefitsByCategory[cat].sort((a: Benefit, b: Benefit) => {
       if (a.cashbackType === 'PERCENTAGE' && b.cashbackType !== 'PERCENTAGE') return -1;
       if (a.cashbackType !== 'PERCENTAGE' && b.cashbackType === 'PERCENTAGE') return 1;
       return Number(b.cashbackAmount) - Number(a.cashbackAmount);
@@ -151,14 +114,14 @@ export default async function BrowsePage() {
   const getChannelGroups = (channel: string) => {
     const anyBenefits = benefitsByCategory['Any'] || [];
     const percentages = anyBenefits.filter(
-      (benefit: BrowseBenefit) =>
+      (benefit: Benefit) =>
         benefit.cashbackType === 'PERCENTAGE' &&
         (benefit.purchaseChannel === channel || !benefit.purchaseChannel) &&
         (benefit.usageAvailable === null || benefit.usageUsed < benefit.usageAvailable),
     );
 
-    const options = percentages.flatMap((benefit: BrowseBenefit) => {
-      return benefit.cardLinks.map((link: BrowseCardLink): ChannelGroupOption => {
+    const options = percentages.flatMap((benefit: Benefit) => {
+      return benefit.cardLinks.map((link: BenefitCardLink): ChannelGroupOption => {
         const card = link.card;
         let effectiveCashback = Number(benefit.cashbackAmount);
         if (channel === 'FOREIGN_CURRENCY' && card.fcyFee) {
@@ -285,7 +248,7 @@ export default async function BrowsePage() {
                 usageUsed={b.usageUsed}
                 minimumSpending={b.minimumSpending}
                 maximumSpending={b.maximumSpending}
-                cardOptions={b.cardLinks.map((link: BrowseCardLink) => ({
+                cardOptions={b.cardLinks.map((link: BenefitCardLink) => ({
                   name: link.card.name,
                   fcyFee: link.card.fcyFee,
                   isCredit: link.card.isCredit,
@@ -351,7 +314,7 @@ export default async function BrowsePage() {
           {categories.map((category) => {
             const cardGrid = (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {benefitsByCategory[category].map((benefit: BrowseBenefit) => (
+                {benefitsByCategory[category].map((benefit: Benefit) => (
                   <div
                     key={benefit.id}
                     className="relative flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
@@ -397,7 +360,7 @@ export default async function BrowsePage() {
                         <div className="flex gap-2">
                           <span className="font-medium text-slate-900 min-w-[70px]">Cards:</span>
                           <span className="text-slate-700">
-                            {benefit.cardLinks.map((link: BrowseCardLink) => link.card.name).join(', ')}
+                            {benefit.cardLinks.map((link: BenefitCardLink) => link.card.name).join(', ')}
                           </span>
                         </div>
                       )}
@@ -452,7 +415,7 @@ export default async function BrowsePage() {
                             usageUsed={benefit.usageUsed}
                             minimumSpending={benefit.minimumSpending}
                             maximumSpending={benefit.maximumSpending}
-                            cardOptions={benefit.cardLinks.map((link: BrowseCardLink) => ({
+                            cardOptions={benefit.cardLinks.map((link: BenefitCardLink) => ({
                               name: link.card.name,
                               fcyFee: link.card.fcyFee,
                               isCredit: link.card.isCredit,

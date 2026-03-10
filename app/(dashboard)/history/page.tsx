@@ -1,6 +1,7 @@
 import { ensureBrowseHistoryAccess } from '@/lib/access';
 import { resetMonthlyBenefitUsage } from '@/lib/benefits';
 import { prisma } from '@/lib/prisma';
+import type { BenefitRequestHistoryRow } from '@/app/types';
 
 export default async function HistoryPage() {
   const user = await ensureBrowseHistoryAccess();
@@ -11,7 +12,6 @@ export default async function HistoryPage() {
     include: { benefit: { select: { categoryName: true } } },
     orderBy: { createdAt: 'desc' },
   });
-  type RequestRow = (typeof requests)[number];
 
   return (
     <div className="space-y-4">
@@ -30,7 +30,7 @@ export default async function HistoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {requests.map((request: RequestRow) => (
+              {requests.map((request: BenefitRequestHistoryRow) => (
                 <tr key={request.id}>
                   <td className="px-3 py-2">{request.createdAt.toISOString().replace('T', ' ').slice(0, 16)}</td>
                   <td className="px-3 py-2">{request.benefit.categoryName}</td>
