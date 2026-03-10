@@ -15,7 +15,7 @@ export const createBenefitRequest = async (formData: FormData) => {
   const estimatedCashback = Math.max(0, Math.round(Number(formData.get('estimatedCashback') ?? '0')));
 
   if (!benefitId || Number.isNaN(amountSpent) || !purchaseChannel) {
-    throw new Error('Benefit, amount spent and purchase channel are required');
+    throw new Error('Benefit, spendings and purchase channel are required');
   }
 
   await prisma.benefitRequest.create({

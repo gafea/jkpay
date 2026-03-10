@@ -473,6 +473,7 @@ export default async function BrowsePage() {
                                 isCredit: typeLink.card.isCredit,
                               })),
                             }))}
+                            anyBenefitOptions={anyBenefitOptions}
                             defaultChannel={benefit.purchaseChannel}
                           />
                         </div>

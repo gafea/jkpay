@@ -24,7 +24,7 @@ export default async function HistoryPage() {
               <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
                 <th className="px-3 py-2 font-medium">Requested at</th>
                 <th className="px-3 py-2 font-medium">Benefit</th>
-                <th className="px-3 py-2 font-medium">Amount spent</th>
+                <th className="px-3 py-2 font-medium">Spendings</th>
                 <th className="px-3 py-2 font-medium">Channel</th>
                 <th className="px-3 py-2 font-medium">Status</th>
               </tr>
