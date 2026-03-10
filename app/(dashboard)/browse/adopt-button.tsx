@@ -11,6 +11,7 @@ type CashbackType = 'PERCENTAGE' | 'ONE_TIME_CASH';
 type CardOption = {
   name: string;
   fcyFee: number | null;
+  isCredit: boolean;
 };
 
 type AnyBenefitOption = {
@@ -169,9 +170,12 @@ export const AdoptButton = ({
         benefitName: option.benefitName,
         cashbackType: option.cashbackType,
         cashbackAmount: option.cashbackAmount,
+        minimumSpending: option.minimumSpending,
+        maximumSpending: option.maximumSpending,
         purchaseChannel: option.purchaseChannel,
         rangeLabel: formatSpendRange(option.minimumSpending, option.maximumSpending),
         cardName: card.name,
+        isCredit: card.isCredit,
         effectiveRate,
         earnAmount: quotaAdjustedEarn,
         eligible: eligibleWithQuota,
@@ -179,7 +183,25 @@ export const AdoptButton = ({
     }),
   );
 
-  const activeCandidates = allCandidates.filter((candidate) => candidate.eligible);
+  const cumulativeCandidates = allCandidates.map((candidate) => {
+    const minOnlyAccumulated = allCandidates
+      .filter(
+        (other) =>
+          other.eligible &&
+          other.cardName === candidate.cardName &&
+          other.minimumSpending !== null &&
+          other.maximumSpending === null,
+      )
+      .reduce((sum, current) => sum + current.earnAmount, 0);
+
+    const shouldAccumulate = candidate.minimumSpending !== null && candidate.maximumSpending === null;
+    return {
+      ...candidate,
+      earnAmount: shouldAccumulate ? minOnlyAccumulated : candidate.earnAmount,
+    };
+  });
+
+  const activeCandidates = cumulativeCandidates.filter((candidate) => candidate.eligible);
 
   const selectedOrDefaultChannel: PurchaseChannel | null = defaultChannel ?? (purchaseChannel || null);
 
@@ -203,10 +225,28 @@ export const AdoptButton = ({
           cashbackColorClass: cashbackColorClass(bestAnyCandidate.purchaseChannel ?? selectedOrDefaultChannel),
           rangeLabel: bestAnyCandidate.rangeLabel,
           earns: bestAnyCandidate.earnAmount,
+          isCredit: bestAnyCandidate.isCredit,
           benefitName: bestAnyCandidate.benefitName,
         }
       : null
     : null;
+
+  const includedAccumulatedRowIds = new Set<string>();
+  if (effectiveBest) {
+    const cumulativeContributors = cumulativeCandidates.filter(
+      (candidate) =>
+        candidate.eligible &&
+        candidate.cardName === effectiveBest.cardName &&
+        candidate.minimumSpending !== null &&
+        candidate.maximumSpending === null,
+    );
+
+    if (hasValidAmount && cumulativeContributors.length > 0) {
+      cumulativeContributors.forEach((candidate) => includedAccumulatedRowIds.add(candidate.id));
+    } else {
+      includedAccumulatedRowIds.add(effectiveBest.id);
+    }
+  }
 
   const youEarns = hasValidAmount && effectiveBest ? effectiveBest.earns : 0;
 
@@ -214,11 +254,17 @@ export const AdoptButton = ({
   const savingsPct = hasValidAmount && amount > 0 ? (youEarns / amount) * 100 : 0;
   const jkEarnsCashflow = hasValidAmount ? Math.max(0, totalNeedToPay) : 0;
 
+  const jkEarnDisplay =
+    effectiveBest && !effectiveBest.isCredit ? 'nothing' : `${formatMoney(jkEarnsCashflow)} in cashflow`;
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setPurchaseChannel(defaultChannel ?? '');
+          setOpen(true);
+        }}
         className={
           compact
             ? 'rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50'
@@ -307,10 +353,10 @@ export const AdoptButton = ({
                           </td>
                         </tr>
                       ) : (
-                        allCandidates.map((candidate) => {
-                          const isBest = !amountSpent || (effectiveBest && candidate.id === effectiveBest.id);
+                        cumulativeCandidates.map((candidate) => {
+                          const isIncluded = includedAccumulatedRowIds.has(candidate.id);
                           return (
-                            <tr key={candidate.id} className={isBest ? 'bg-white' : 'bg-slate-100'}>
+                            <tr key={candidate.id} className={isIncluded ? 'bg-white' : 'bg-slate-100'}>
                               <td className="px-5 py-3 whitespace-nowrap text-slate-600 font-medium">
                                 {candidate.rangeLabel}
                               </td>
@@ -359,10 +405,8 @@ export const AdoptButton = ({
                     </div>
                   </div>
                   <div className="rounded-md px-5 py-2">
-                    <div className="font-semibold text-slate-500">jk earn (Est.)</div>
-                    <div className="text-base font-semibold text-slate-700">
-                      {formatMoney(jkEarnsCashflow)} in cashflow
-                    </div>
+                    <div className="font-semibold text-slate-500">jk earns (Est.)</div>
+                    <div className="text-base font-semibold text-slate-700">{jkEarnDisplay}</div>
                   </div>
                 </div>
               </div>

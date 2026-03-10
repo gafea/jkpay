@@ -11,6 +11,7 @@ type BrowseCardLink = {
     id: string;
     name: string;
     fcyFee: number | null;
+    isCredit: boolean;
   };
 };
 
@@ -45,8 +46,10 @@ type AnyBenefitOption = {
   minimumSpending: number | null;
   maximumSpending: number | null;
   purchaseChannel: BrowseBenefit['purchaseChannel'];
-  cardOptions: { name: string; fcyFee: number | null }[];
+  cardOptions: { name: string; fcyFee: number | null; isCredit: boolean }[];
 };
+
+type PurchaseChannel = 'ONLINE_PURCHASE' | 'OFFLINE_PURCHASE' | 'FOREIGN_CURRENCY';
 
 export default async function BrowsePage() {
   await ensureBrowseHistoryAccess();
@@ -84,6 +87,7 @@ export default async function BrowsePage() {
         id: link.card.id,
         name: link.card.name,
         fcyFee: link.card.fcyFee === null ? null : Number(link.card.fcyFee),
+        isCredit: link.card.isCredit,
       },
     })),
   }));
@@ -140,6 +144,7 @@ export default async function BrowsePage() {
     cardOptions: benefit.cardLinks.map((link) => ({
       name: link.card.name,
       fcyFee: link.card.fcyFee,
+      isCredit: link.card.isCredit,
     })),
   }));
 
@@ -203,9 +208,47 @@ export default async function BrowsePage() {
     const b = maxes[0];
     const others = maxes.slice(1);
 
+    const daysToExpiry = b.expiryDate
+      ? Math.max(0, Math.ceil((b.expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : null;
+    const hasTopRestrictions =
+      (daysToExpiry !== null && daysToExpiry <= 3) ||
+      b.usageAvailable !== null ||
+      b.minimumSpending !== null ||
+      b.maximumSpending !== null;
+
+    const unrestrictedCandidates = (benefitsByCategory['Any'] || [])
+      .filter(
+        (benefit) =>
+          benefit.cashbackType === 'PERCENTAGE' &&
+          (benefit.purchaseChannel === channel || !benefit.purchaseChannel) &&
+          benefit.expiryDate === null &&
+          benefit.usageAvailable === null &&
+          benefit.minimumSpending === null &&
+          benefit.maximumSpending === null,
+      )
+      .flatMap((benefit) =>
+        benefit.cardLinks.map((link) => {
+          let effectiveCashback = Number(benefit.cashbackAmount);
+          if (channel === 'FOREIGN_CURRENCY' && link.card.fcyFee) {
+            effectiveCashback -= Number(link.card.fcyFee);
+          }
+          return {
+            cardName: link.card.name,
+            effectiveCashback,
+          };
+        }),
+      );
+
+    const fallbackRow =
+      hasTopRestrictions && unrestrictedCandidates.length > 0
+        ? unrestrictedCandidates.sort((a, b) => b.effectiveCashback - a.effectiveCashback)[0]
+        : null;
+
     return (
       <div className="flex flex-col h-full rounded-xl shadow-md overflow-hidden bg-white border border-slate-200">
-        <div className={`flex flex-col justify-between bg-gradient-to-br flex-1 ${colorClass} p-5 text-white`}>
+        <div className={`relative flex flex-col justify-between bg-gradient-to-br flex-1 ${colorClass} p-5 text-white`}>
+          <Icon className="pointer-events-none absolute bottom-2 right-2 h-20 w-20 text-white/15" />
           <div>
             <div className="flex items-center gap-2">
               <Icon className="h-5 w-5 text-white/90" />
@@ -220,6 +263,7 @@ export default async function BrowsePage() {
             </div>
           </div>
           <div className="mt-4 flex flex-col gap-1 text-sm text-white/90">
+            {daysToExpiry !== null && <div>Expiry: {b.expiryDate?.toISOString().slice(0, 10)}</div>}
             {(b.minimumSpending !== null || b.maximumSpending !== null) && (
               <div>Spend: {formatSpendRange(b.minimumSpending, b.maximumSpending)}</div>
             )}
@@ -244,15 +288,16 @@ export default async function BrowsePage() {
                 cardOptions={b.cardLinks.map((link: BrowseCardLink) => ({
                   name: link.card.name,
                   fcyFee: link.card.fcyFee,
+                  isCredit: link.card.isCredit,
                 }))}
                 isAnyBenefit
                 anyBenefitOptions={anyBenefitOptions}
-                defaultChannel={b.purchaseChannel}
+                defaultChannel={channel as PurchaseChannel}
               />
             </div>
           </div>
         </div>
-        {others.length > 0 && (
+        {(others.length > 0 || fallbackRow) && (
           <div className="flex flex-col bg-white text-slate-800 text-sm">
             <table className="w-full text-left border-collapse">
               <tbody>
@@ -270,6 +315,23 @@ export default async function BrowsePage() {
                     </tr>
                   );
                 })}
+                {fallbackRow && (
+                  <tr className={others.length > 0 ? 'border-t border-slate-200' : ''}>
+                    <td className="px-5 py-3 whitespace-nowrap text-slate-600 font-medium">Any Spending</td>
+                    <td className="px-5 py-3 text-slate-600 truncate max-w-[120px]">{fallbackRow.cardName}</td>
+                    <td
+                      className={`px-5 py-3 whitespace-nowrap font-bold text-right ${
+                        colorClass.includes('blue')
+                          ? 'text-blue-600'
+                          : colorClass.includes('emerald')
+                            ? 'text-emerald-600'
+                            : 'text-purple-600'
+                      }`}
+                    >
+                      {fallbackRow.effectiveCashback.toFixed(2).replace(/\.?0+$/, '')}%
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -393,6 +455,7 @@ export default async function BrowsePage() {
                             cardOptions={benefit.cardLinks.map((link: BrowseCardLink) => ({
                               name: link.card.name,
                               fcyFee: link.card.fcyFee,
+                              isCredit: link.card.isCredit,
                             }))}
                             sameTypeBenefitOptions={benefitsByCategory[category].map((typeBenefit) => ({
                               benefitName: typeBenefit.categoryName,
@@ -407,6 +470,7 @@ export default async function BrowsePage() {
                               cardOptions: typeBenefit.cardLinks.map((typeLink) => ({
                                 name: typeLink.card.name,
                                 fcyFee: typeLink.card.fcyFee,
+                                isCredit: typeLink.card.isCredit,
                               })),
                             }))}
                             defaultChannel={benefit.purchaseChannel}
