@@ -234,8 +234,26 @@ export const addBenefit = saveBenefit;
 export const removeBenefit = async (formData: FormData) => {
   await ensureOwnerAccess();
   const id = String(formData.get('id') ?? '');
-  await prisma.benefit.delete({ where: { id } });
+  const requestCount = await prisma.benefitRequest.count({ where: { benefitId: id } });
+
+  if (requestCount > 0) {
+    const archivedDate = new Date();
+    archivedDate.setHours(0, 0, 0, 0);
+    archivedDate.setDate(archivedDate.getDate() - 1);
+
+    await prisma.benefit.update({
+      where: { id },
+      data: {
+        expiryDate: archivedDate,
+      },
+    });
+  } else {
+    await prisma.benefit.delete({ where: { id } });
+  }
+
   revalidatePath('/manage');
+  revalidatePath('/browse');
+  revalidatePath('/history');
 };
 
 export const saveServerVariables = async (formData: FormData) => {

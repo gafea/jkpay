@@ -574,7 +574,7 @@ export const AdoptButton = ({
                                 </div>
                                 {tooltipLines.map((line) => (
                                   <div key={line.label} style={{ color: line.color }}>
-                                    {line.label === 'Foreign Currency' ? 'FX' : line.label}: -
+                                    {line.label === 'Foreign Currency' ? 'FX' : line.label}:
                                     {formatMoney(line.cashbackValue)} ({line.savingsPct.toFixed(1)}%)
                                   </div>
                                 ))}

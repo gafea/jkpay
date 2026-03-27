@@ -1,4 +1,5 @@
 import NextAuth, { type DefaultSession } from 'next-auth';
+import MicrosoftEntraID from 'next-auth/providers/microsoft-entra-id';
 import { prisma } from '@/lib/prisma';
 import { getAppBaseUrl } from '@/lib/app-url';
 
@@ -56,10 +57,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
   secret: process.env.SESSION_SECRET,
   providers: [
-    {
+    MicrosoftEntraID({
       id: 'microsoft',
       name: 'Microsoft',
-      type: 'oidc',
       issuer: microsoftIssuer,
       clientId: process.env.OAUTH_CLIENT_ID,
       clientSecret: process.env.OAUTH_CLIENT_SECRET,
@@ -69,7 +69,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
       },
       profile(profile) {
-        const email = extractMicrosoftEmail(profile as Record<string, unknown>);
+        const email = extractMicrosoftEmail(profile as unknown as Record<string, unknown>);
 
         if (!email) {
           throw new Error('No email claim found in Microsoft profile.');
@@ -81,7 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email,
         };
       },
-    },
+    }),
   ],
   callbacks: {
     async signIn({ user }) {
