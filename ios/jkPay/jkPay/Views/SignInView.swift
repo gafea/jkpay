@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 struct SignInView: View {
   @Environment(\.openURL) private var openURL
@@ -15,7 +16,17 @@ struct SignInView: View {
         .padding(.horizontal)
 
       Button("Sign in with Microsoft") {
-        openURL(AppConfig.baseURL.appendingPathComponent("api/auth/signin/microsoft"))
+        var components = URLComponents(
+          url: AppConfig.baseURL.appendingPathComponent("api/auth/signin"),
+          resolvingAgainstBaseURL: false
+        )
+        components?.queryItems = [
+          URLQueryItem(name: "provider", value: "microsoft")
+        ]
+
+        if let signInURL = components?.url {
+          openURL(signInURL)
+        }
       }
       .buttonStyle(.borderedProminent)
 

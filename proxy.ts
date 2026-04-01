@@ -17,7 +17,8 @@ export default auth((request) => {
 
   if (!request.auth?.user) {
     const appBaseUrl = getAppBaseUrl();
-    const signInUrl = new URL('/api/auth/signin/microsoft', appBaseUrl);
+    const signInUrl = new URL('/api/auth/signin', appBaseUrl);
+    signInUrl.searchParams.set('provider', 'microsoft');
     const callbackUrl = new URL(request.nextUrl.pathname + request.nextUrl.search, appBaseUrl);
     signInUrl.searchParams.set('callbackUrl', callbackUrl.toString());
     return NextResponse.redirect(signInUrl);

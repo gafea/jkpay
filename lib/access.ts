@@ -16,7 +16,7 @@ export const getCurrentSessionUser = async () => {
   const session = await auth();
 
   if (!session?.user?.email) {
-    redirect('/api/auth/signin/microsoft');
+    redirect('/api/auth/signin?provider=microsoft');
   }
 
   const normalizedEmail = normalizeEmail(session.user.email);

@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 enum AuthStatus {
   case unknown
