@@ -4,25 +4,26 @@ import { getFriendAccessStatus, isOwnerEmail } from '@/lib/access';
 import { redirect } from 'next/navigation';
 
 type HomePageProps = {
-  searchParams?: {
+  searchParams?: Promise<{
     autoredirect?: string;
     callbackUrl?: string;
-  };
+  }>;
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
+  const resolvedSearchParams = (await searchParams) ?? {};
   const session = await auth();
   const appBaseUrl = getAppBaseUrl().toString();
   const appOrigin = new URL(appBaseUrl).origin;
   const fallbackCallbackUrl = new URL('/browse', appBaseUrl).toString();
   let accessStatus: 'active' | 'disabled' | 'expired' | 'none' = 'none';
 
-  if (!session?.user?.email && searchParams?.autoredirect === '1') {
+  if (!session?.user?.email && resolvedSearchParams.autoredirect === '1') {
     let callbackUrl = fallbackCallbackUrl;
 
-    if (searchParams.callbackUrl) {
+    if (resolvedSearchParams.callbackUrl) {
       try {
-        const candidate = new URL(searchParams.callbackUrl, appBaseUrl);
+        const candidate = new URL(resolvedSearchParams.callbackUrl, appBaseUrl);
         if (candidate.origin === appOrigin) {
           callbackUrl = candidate.toString();
         }

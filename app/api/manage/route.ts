@@ -24,6 +24,8 @@ const getEnvFileKeys = () => {
     .filter((key) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key));
 };
 
+  const isServerVariablesEnabled = () => process.env.ALLOW_SERVER_VARIABLES?.toLowerCase() === 'true';
+
 export async function GET(request: Request) {
   const access = await ensureOwnerAccessApi(request);
   if (!access.ok) {
@@ -48,23 +50,24 @@ export async function GET(request: Request) {
     }),
   ]);
 
-  const envKeys = getEnvFileKeys();
-  const serverVariables = envKeys
-    .map((key) => {
-      const rawValue = process.env[key] ?? '';
-      const isSecret = key.toLowerCase().includes('secret');
-      return {
-        key,
-        value: isSecret ? '***' : rawValue,
-        readOnly: !key.startsWith('DYNAMIC_'),
-      };
-    })
-    .sort((a, b) => {
-      if (a.readOnly !== b.readOnly) {
-        return a.readOnly ? 1 : -1;
-      }
-      return a.key.localeCompare(b.key);
-    });
+  const serverVariables = isServerVariablesEnabled()
+    ? getEnvFileKeys()
+        .map((key) => {
+          const rawValue = process.env[key] ?? '';
+          const isSecret = key.toLowerCase().includes('secret');
+          return {
+            key,
+            value: isSecret ? '***' : rawValue,
+            readOnly: !key.startsWith('DYNAMIC_'),
+          };
+        })
+        .sort((a, b) => {
+          if (a.readOnly !== b.readOnly) {
+            return a.readOnly ? 1 : -1;
+          }
+          return a.key.localeCompare(b.key);
+        })
+    : [];
 
   const payload: ApiManageResponse = {
     friends: friends.map((friend) => ({

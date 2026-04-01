@@ -422,6 +422,7 @@ export const ManageGrid = ({
   const [savedBenefits, setSavedBenefits] = useState<BenefitInput[]>(benefits);
   const [serverVarCards, setServerVarCards] = useState(serverVariables);
   const [savedServerVarCards, setSavedServerVarCards] = useState(serverVariables);
+  const showServerVariables = serverVarCards.length > 0;
 
   const apiRequest = useCallback(async <T,>(path: string, options: RequestInit = {}) => {
     const response = await fetch(path, {
@@ -1364,45 +1365,47 @@ export const ManageGrid = ({
         )}
       </section>
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-          <h2 className="text-base font-semibold text-slate-900">Server Variables</h2>
-          <div className="flex items-center gap-3">
-            {saveStatus.serverVars === 'success' && <span className="text-sm text-green-600">Saved!</span>}
-            {saveStatus.serverVars === 'failed' && <span className="text-sm text-red-600">Failed</span>}
-            {saveStatus.serverVars === 'saving' && <span className="text-sm text-slate-500">Saving...</span>}
-            <button
-              onClick={handleSaveServerVariables}
-              disabled={busyKey === 'saving-server-vars' || !isServerVarsChanged}
-              className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
-            >
-              Save
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
-          {serverVarCards.map((card) => (
-            <div key={card.key} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{card.key}</h3>
-              {card.readOnly ? (
-                <p className="text-sm text-slate-700 break-all">{card.value || '—'}</p>
-              ) : (
-                <textarea
-                  value={card.value}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setServerVarCards((current) =>
-                      current.map((entry) => (entry.key === card.key ? { ...entry, value } : entry)),
-                    );
-                  }}
-                  rows={3}
-                  className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 outline-none focus:ring-1 focus:ring-indigo-400"
-                />
-              )}
+      {showServerVariables && (
+        <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+            <h2 className="text-base font-semibold text-slate-900">Server Variables</h2>
+            <div className="flex items-center gap-3">
+              {saveStatus.serverVars === 'success' && <span className="text-sm text-green-600">Saved!</span>}
+              {saveStatus.serverVars === 'failed' && <span className="text-sm text-red-600">Failed</span>}
+              {saveStatus.serverVars === 'saving' && <span className="text-sm text-slate-500">Saving...</span>}
+              <button
+                onClick={handleSaveServerVariables}
+                disabled={busyKey === 'saving-server-vars' || !isServerVarsChanged}
+                className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 transition-colors"
+              >
+                Save
+              </button>
             </div>
-          ))}
-        </div>
-      </section>
+          </div>
+          <div className="grid grid-cols-1 gap-3 p-4 md:grid-cols-2 xl:grid-cols-3">
+            {serverVarCards.map((card) => (
+              <div key={card.key} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{card.key}</h3>
+                {card.readOnly ? (
+                  <p className="text-sm text-slate-700 break-all">{card.value || '—'}</p>
+                ) : (
+                  <textarea
+                    value={card.value}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setServerVarCards((current) =>
+                        current.map((entry) => (entry.key === card.key ? { ...entry, value } : entry)),
+                      );
+                    }}
+                    rows={3}
+                    className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 outline-none focus:ring-1 focus:ring-indigo-400"
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 };

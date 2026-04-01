@@ -17,8 +17,22 @@ type AuthIdentity = {
   name: string;
 };
 
+const resolveRequestProto = (request: Request) => {
+  const forwardedProto = request.headers.get('x-forwarded-proto');
+  if (forwardedProto) {
+    return forwardedProto.split(',')[0]?.trim().toLowerCase() ?? '';
+  }
+
+  try {
+    return new URL(request.url).protocol.replace(':', '').toLowerCase();
+  } catch {
+    return '';
+  }
+};
+
 const resolveAuthIdentity = async (request: Request): Promise<AuthIdentity | null> => {
-  const token = await getToken({ req: request, secret: process.env.SESSION_SECRET! });
+  const secureCookie = resolveRequestProto(request) === 'https';
+  const token = await getToken({ req: request, secret: process.env.SESSION_SECRET!, secureCookie });
   if (!token?.email) {
     return null;
   }

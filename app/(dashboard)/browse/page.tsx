@@ -430,7 +430,7 @@ export default async function BrowsePage() {
                   <details className="group">
                     <summary className="cursor-pointer text-sm font-medium text-slate-500 uppercase tracking-widest hover:text-slate-800 list-none mb-4 flex items-center gap-2 transition-colors">
                       <span className="text-[10px] transition-transform group-open:-rotate-180">▼</span>
-                      Other Benefit Cards
+                      Details
                     </summary>
                     {cardGrid}
                   </details>

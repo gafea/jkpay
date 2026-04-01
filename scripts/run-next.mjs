@@ -58,8 +58,6 @@ if (domain) {
   process.env.NEXTAUTH_URL = process.env.NEXTAUTH_URL || canonicalUrl;
 }
 
-process.env.AUTH_TRUST_HOST = process.env.AUTH_TRUST_HOST || 'true';
-
 const child = spawn(
   process.execPath,
   [nextBin, nextCommand, ...nextRuntimeArgs, '-p', port],

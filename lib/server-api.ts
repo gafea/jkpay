@@ -1,4 +1,4 @@
-import { cookies, headers, type ReadonlyHeaders } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { getAppBaseUrl } from '@/lib/app-url';
 
 export class ApiError extends Error {
@@ -12,23 +12,20 @@ export class ApiError extends Error {
 
 const buildApiUrl = (path: string, origin: string) => new URL(path, origin).toString();
 
-const resolveRequestOrigin = (headerStore: ReadonlyHeaders) => {
-  const forwardedProto = headerStore.get('x-forwarded-proto');
-  const proto = forwardedProto ? forwardedProto.split(',')[0]?.trim() : '';
-  const forwardedHost = headerStore.get('x-forwarded-host');
-  const host = forwardedHost ?? headerStore.get('host');
-  if (host) {
-    return `${proto || 'http'}://${host}`;
-  }
-
-  return getAppBaseUrl().toString();
-};
+const resolveRequestOrigin = () => getAppBaseUrl().toString();
 
 export const fetchServerApi = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
   const headerStore = await headers();
   const cookieStore = await cookies();
   const requestHeaders = new Headers(options.headers);
-  const origin = resolveRequestOrigin(headerStore);
+  const origin = resolveRequestOrigin();
+  const appBaseUrl = getAppBaseUrl();
+  if (!requestHeaders.has('x-forwarded-proto')) {
+    requestHeaders.set('x-forwarded-proto', appBaseUrl.protocol.replace(':', ''));
+  }
+  if (!requestHeaders.has('x-forwarded-host')) {
+    requestHeaders.set('x-forwarded-host', appBaseUrl.host);
+  }
   const rawCookieHeader = headerStore.get('cookie') ?? '';
   const cookieHeader = rawCookieHeader
     ? rawCookieHeader

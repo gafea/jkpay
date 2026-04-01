@@ -258,6 +258,9 @@ export const removeBenefit = async (formData: FormData) => {
 
 export const saveServerVariables = async (formData: FormData) => {
   await ensureOwnerAccess();
+  if (process.env.ALLOW_SERVER_VARIABLES?.toLowerCase() !== 'true') {
+    throw new Error('Server variables are disabled');
+  }
   const raw = String(formData.get('variables') ?? '{}');
   const parsed = JSON.parse(raw) as Record<string, string>;
 

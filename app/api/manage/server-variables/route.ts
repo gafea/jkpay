@@ -8,6 +8,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: access.reason }, { status: access.status });
   }
 
+  if (process.env.ALLOW_SERVER_VARIABLES?.toLowerCase() !== 'true') {
+    return NextResponse.json({ error: 'Server variables are disabled' }, { status: 403 });
+  }
+
   const payload = (await request.json().catch(() => null)) as {
     variables?: Record<string, string>;
   } | null;
