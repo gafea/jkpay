@@ -1,14 +1,5 @@
 'use client';
 
-import {
-  removeBenefit,
-  removeCard,
-  removeFriend,
-  saveBenefit,
-  saveCard,
-  saveFriend,
-  saveServerVariables,
-} from '@/app/actions/manage';
 import type { BenefitForm, Card, Friend, ManageGridProps, PurchaseChannel, Row, Weekday } from '@/app/types';
 import { Trash2, GripVertical, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -74,18 +65,6 @@ const isBenefitExpired = (dateStr: string) => {
   today.setHours(0, 0, 0, 0);
   const ed = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
   return ed < today;
-};
-
-const toFormData = (pairs: Array<[string, string | string[] | boolean]>) => {
-  const formData = new FormData();
-  for (const [key, value] of pairs) {
-    if (Array.isArray(value)) {
-      value.forEach((item) => formData.append(key, item));
-      continue;
-    }
-    formData.append(key, String(value));
-  }
-  return formData;
 };
 
 // ─── Shared cell / input styles ───────────────────────────────────────────────
@@ -444,6 +423,27 @@ export const ManageGrid = ({
   const [serverVarCards, setServerVarCards] = useState(serverVariables);
   const [savedServerVarCards, setSavedServerVarCards] = useState(serverVariables);
 
+  const apiRequest = useCallback(async <T,>(path: string, options: RequestInit = {}) => {
+    const response = await fetch(path, {
+      ...options,
+      headers: {
+        'content-type': 'application/json',
+        ...(options.headers ?? {}),
+      },
+    });
+
+    if (!response.ok) {
+      const message = await response.text().catch(() => '');
+      throw new Error(message || `Request failed with ${response.status}`);
+    }
+
+    if (response.status === 204) {
+      return null as T;
+    }
+
+    return (await response.json()) as T;
+  }, []);
+
   // Compute if rows are edited
   const omitKey = <T extends Record<string, any>>(obj: T): Omit<T, '_key'> => {
     const { _key, ...rest } = obj;
@@ -498,77 +498,89 @@ export const ManageGrid = ({
     });
   };
 
-  const saveFriendRow = useCallback(async (row: Row<FriendInput>) => {
-    if (!row.email.trim()) return;
-    setBusyKey(`friend-save-${row._key}`);
-    try {
-      const res = await saveFriend(
-        toFormData([
-          ['id', row.id],
-          ['email', row.email],
-          ['nickname', row.nickname],
-          ['fcmToken', row.fcmToken],
-          ['activeUntil', row.activeUntil],
-          ['isDisabled', row.isDisabled],
-        ]),
-      );
-      if (res?.id && !row.id) {
-        setFriendRows((c) => c.map((r) => (r._key === row._key ? { ...r, id: res.id } : r)));
+  const saveFriendRow = useCallback(
+    async (row: Row<FriendInput>) => {
+      if (!row.email.trim()) return;
+      setBusyKey(`friend-save-${row._key}`);
+      try {
+        const res = await apiRequest<{ id: string }>('/api/manage/friends', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: row.id,
+            email: row.email,
+            nickname: row.nickname,
+            fcmToken: row.fcmToken,
+            activeUntil: row.activeUntil,
+            isDisabled: row.isDisabled,
+          }),
+        });
+        if (res?.id && !row.id) {
+          setFriendRows((c) => c.map((r) => (r._key === row._key ? { ...r, id: res.id } : r)));
+        }
+      } finally {
+        setBusyKey('');
       }
-    } finally {
-      setBusyKey('');
-    }
-  }, []);
+    },
+    [apiRequest],
+  );
 
-  const saveCardRow = useCallback(async (row: Row<CardInput>) => {
-    if (!row.name.trim()) return;
-    setBusyKey(`card-save-${row._key}`);
-    try {
-      const res = await saveCard(
-        toFormData([
-          ['id', row.id],
-          ['name', row.name],
-          ['fcyFee', row.fcyFee],
-          ['isCredit', row.isCredit],
-          ['isDisabled', row.isDisabled],
-        ]),
-      );
-      if (res?.id && !row.id) {
-        setCardRows((c) => c.map((r) => (r._key === row._key ? { ...r, id: res.id } : r)));
+  const saveCardRow = useCallback(
+    async (row: Row<CardInput>) => {
+      if (!row.name.trim()) return;
+      setBusyKey(`card-save-${row._key}`);
+      try {
+        const res = await apiRequest<{ id: string }>('/api/manage/cards', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: row.id,
+            name: row.name,
+            fcyFee: row.fcyFee,
+            isCredit: row.isCredit,
+            isDisabled: row.isDisabled,
+          }),
+        });
+        if (res?.id && !row.id) {
+          setCardRows((c) => c.map((r) => (r._key === row._key ? { ...r, id: res.id } : r)));
+        }
+      } finally {
+        setBusyKey('');
       }
-    } finally {
-      setBusyKey('');
-    }
-  }, []);
+    },
+    [apiRequest],
+  );
 
-  const saveBenefitRow = useCallback(async (row: Row<BenefitInput>) => {
-    if (!row.categoryName.trim() || !row.cashbackType || !row.cashbackAmount.trim()) return;
-    setBusyKey(`benefit-save-${row._key}`);
-    try {
-      const res = await saveBenefit(
-        toFormData([
-          ['id', row.id],
-          ['categoryName', row.categoryName],
-          ['expiryDate', row.expiryDate],
-          ['cashbackType', row.cashbackType],
-          ['cashbackAmount', row.cashbackAmount],
-          ['quotaType', row.quotaType],
-          ['usageAvailable', row.usageAvailable],
-          ['quotaResetsMonthly', row.quotaResetsMonthly],
-          ['minimumSpending', row.minimumSpending],
-          ['maximumSpending', row.maximumSpending],
-          ['applicableWeekdays', row.applicableWeekdays],
-          ['purchaseChannel', row.purchaseChannel],
-          ['linkedCardIds', row.linkedCardIds],
-        ]),
-      );
-      if (res?.id && !row.id) {
-        setBenefitRows((c) => c.map((r) => (r._key === row._key ? { ...r, id: res.id } : r)));
+  const saveBenefitRow = useCallback(
+    async (row: Row<BenefitInput>) => {
+      if (!row.categoryName.trim() || !row.cashbackType || !row.cashbackAmount.trim()) return;
+      setBusyKey(`benefit-save-${row._key}`);
+      try {
+        const res = await apiRequest<{ id: string }>('/api/manage/benefits', {
+          method: 'POST',
+          body: JSON.stringify({
+            id: row.id,
+            categoryName: row.categoryName,
+            expiryDate: row.expiryDate,
+            cashbackType: row.cashbackType,
+            cashbackAmount: row.cashbackAmount,
+            quotaType: row.quotaType,
+            usageAvailable: row.usageAvailable,
+            quotaResetsMonthly: row.quotaResetsMonthly,
+            minimumSpending: row.minimumSpending,
+            maximumSpending: row.maximumSpending,
+            applicableWeekdays: row.applicableWeekdays,
+            purchaseChannel: row.purchaseChannel,
+            linkedCardIds: row.linkedCardIds,
+          }),
+        });
+        if (res?.id && !row.id) {
+          setBenefitRows((c) => c.map((r) => (r._key === row._key ? { ...r, id: res.id } : r)));
+        }
+      } finally {
+        setBusyKey('');
       }
-    } finally {
-      setBusyKey('');
-    }
-  }, []);
+    },
+    [apiRequest],
+  );
 
   const [saveStatus, setSaveStatus] = useState<{
     friends: string;
@@ -594,11 +606,12 @@ export const ManageGrid = ({
         return prev?.value !== card.value;
       });
 
-      await saveServerVariables(
-        toFormData([
-          ['variables', JSON.stringify(Object.fromEntries(changedDynamicVars.map((card) => [card.key, card.value])))],
-        ]),
-      );
+      await apiRequest('/api/manage/server-variables', {
+        method: 'POST',
+        body: JSON.stringify({
+          variables: Object.fromEntries(changedDynamicVars.map((card) => [card.key, card.value])),
+        }),
+      });
       setSavedServerVarCards(serverVarCards);
       setSaveStatus((s) => ({ ...s, serverVars: 'success' }));
       setTimeout(() => setSaveStatus((s) => ({ ...s, serverVars: '' })), 2000);
@@ -673,7 +686,10 @@ export const ManageGrid = ({
     }
     setBusyKey(`friend-remove-${row._key}`);
     try {
-      await removeFriend(toFormData([['id', row.id]]));
+      await apiRequest('/api/manage/friends', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: row.id }),
+      });
       setFriendRows((current) => current.filter((item) => item._key !== row._key));
       router.refresh();
     } finally {
@@ -688,7 +704,10 @@ export const ManageGrid = ({
     }
     setBusyKey(`card-remove-${row._key}`);
     try {
-      await removeCard(toFormData([['id', row.id]]));
+      await apiRequest('/api/manage/cards', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: row.id }),
+      });
       setCardRows((current) => current.filter((item) => item._key !== row._key));
       router.refresh();
     } finally {
@@ -703,7 +722,10 @@ export const ManageGrid = ({
     }
     setBusyKey(`benefit-remove-${row._key}`);
     try {
-      await removeBenefit(toFormData([['id', row.id]]));
+      await apiRequest('/api/manage/benefits', {
+        method: 'DELETE',
+        body: JSON.stringify({ id: row.id }),
+      });
       setBenefitRows((current) => current.filter((item) => item._key !== row._key));
       router.refresh();
     } finally {

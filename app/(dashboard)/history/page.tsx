@@ -1,17 +1,10 @@
 import { ensureBrowseHistoryAccess } from '@/lib/access';
-import { resetMonthlyBenefitUsage } from '@/lib/benefits';
-import { prisma } from '@/lib/prisma';
-import type { BenefitRequestHistoryRow } from '@/app/types';
+import { fetchServerApi } from '@/lib/server-api';
+import type { ApiHistoryResponse } from '@/lib/api-types';
 
 export default async function HistoryPage() {
-  const user = await ensureBrowseHistoryAccess();
-  await resetMonthlyBenefitUsage();
-
-  const requests = await prisma.benefitRequest.findMany({
-    where: { userId: user.id },
-    include: { benefit: { select: { categoryName: true } } },
-    orderBy: { createdAt: 'desc' },
-  });
+  await ensureBrowseHistoryAccess();
+  const { requests } = await fetchServerApi<ApiHistoryResponse>('/api/history');
 
   return (
     <div className="space-y-4">
@@ -30,10 +23,12 @@ export default async function HistoryPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {requests.map((request: BenefitRequestHistoryRow) => (
+              {requests.map((request) => (
                 <tr key={request.id}>
-                  <td className="px-3 py-2">{request.createdAt.toISOString().replace('T', ' ').slice(0, 16)}</td>
-                  <td className="px-3 py-2">{request.benefit.categoryName}</td>
+                  <td className="px-3 py-2">
+                    {new Date(request.createdAt).toISOString().replace('T', ' ').slice(0, 16)}
+                  </td>
+                  <td className="px-3 py-2">{request.benefitName}</td>
                   <td className="px-3 py-2">{request.amountSpent.toString()}</td>
                   <td className="px-3 py-2">{request.purchaseChannel}</td>
                   <td className="px-3 py-2">{request.status}</td>

@@ -1,6 +1,6 @@
 import { ensureBrowseHistoryAccess } from '@/lib/access';
-import { resetMonthlyBenefitUsage } from '@/lib/benefits';
-import { prisma } from '@/lib/prisma';
+import { fetchServerApi } from '@/lib/server-api';
+import type { ApiBrowseResponse } from '@/lib/api-types';
 import type {
   AnyBenefitOption,
   Benefit,
@@ -15,44 +15,11 @@ import { AdoptButton } from './adopt-button';
 
 export default async function BrowsePage() {
   await ensureBrowseHistoryAccess();
-  await resetMonthlyBenefitUsage();
+  const { benefits: apiBenefits } = await fetchServerApi<ApiBrowseResponse>('/api/browse');
 
-  const dbBenefits = await prisma.benefit.findMany({
-    where: {
-      OR: [{ expiryDate: null }, { expiryDate: { gte: new Date() } }],
-    },
-    include: {
-      cardLinks: {
-        where: { card: { isDisabled: false } },
-        include: { card: true },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
-
-  const rawBenefits: Benefit[] = dbBenefits.map((benefit: (typeof dbBenefits)[number]) => ({
-    id: benefit.id,
-    categoryName: benefit.categoryName,
-    expiryDate: benefit.expiryDate,
-    cashbackType: benefit.cashbackType,
-    cashbackAmount: Number(benefit.cashbackAmount),
-    quotaType: benefit.quotaType,
-    usageAvailable: benefit.usageAvailable,
-    usageUsed: benefit.usageUsed,
-    quotaResetsMonthly: benefit.quotaResetsMonthly,
-    minimumSpending: benefit.minimumSpending === null ? null : Number(benefit.minimumSpending),
-    maximumSpending: benefit.maximumSpending === null ? null : Number(benefit.maximumSpending),
-    applicableWeekdays: benefit.applicableWeekdays,
-    purchaseChannel: benefit.purchaseChannel,
-    cardLinks: benefit.cardLinks.map((link: (typeof benefit.cardLinks)[number]) => ({
-      cardId: link.cardId,
-      card: {
-        id: link.card.id,
-        name: link.card.name,
-        fcyFee: link.card.fcyFee === null ? null : Number(link.card.fcyFee),
-        isCredit: link.card.isCredit,
-      },
-    })),
+  const rawBenefits: Benefit[] = apiBenefits.map((benefit) => ({
+    ...benefit,
+    expiryDate: benefit.expiryDate ? new Date(benefit.expiryDate) : null,
   }));
 
   const benefits = rawBenefits.filter((benefit: Benefit) => benefit.cardLinks.length > 0);

@@ -1,6 +1,5 @@
 'use client';
 
-import { createBenefitRequest } from '@/app/actions/history';
 import {
   CHANNEL_SERIES_META,
   DATA_KEY_TO_CHANNEL,
@@ -15,6 +14,7 @@ import {
   type PurchaseChannel,
 } from '@/app/types';
 import { X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import {
   CartesianGrid,
@@ -45,9 +45,12 @@ export const AdoptButton = ({
   defaultChannel,
   compact = false,
 }: AdoptButtonProps) => {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [amountSpent, setAmountSpent] = useState('');
   const [purchaseChannel, setPurchaseChannel] = useState<PurchaseChannel | ''>(defaultChannel ?? '');
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const amount = Number(amountSpent);
   const hasValidAmount = Number.isFinite(amount) && amount > 0;
@@ -390,12 +393,56 @@ export const AdoptButton = ({
       ? 'nothing'
       : `$${jkEarnsCashflow.toFixed(0)} in cashflow`;
 
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!purchaseChannel) {
+      setSubmitError('Select a purchase channel.');
+      return;
+    }
+    if (!hasValidAmount) {
+      setSubmitError('Enter a valid amount.');
+      return;
+    }
+
+    setSubmitError('');
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('/api/history', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          benefitId,
+          amountSpent: amount,
+          purchaseChannel,
+          estimatedCashback: Math.max(0, Math.round(youEarns)),
+        }),
+      });
+
+      if (!response.ok) {
+        const message = await response.text().catch(() => '');
+        throw new Error(message || 'Request failed');
+      }
+
+      setOpen(false);
+      setAmountSpent('');
+      setPurchaseChannel(defaultChannel ?? '');
+      router.refresh();
+    } catch {
+      setSubmitError('Failed to submit request.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <>
       <button
         type="button"
         onClick={() => {
           setPurchaseChannel(defaultChannel ?? '');
+          setSubmitError('');
           setOpen(true);
         }}
         className={
@@ -422,14 +469,7 @@ export const AdoptButton = ({
               </button>
             </div>
 
-            <form
-              action={async (formData) => {
-                await createBenefitRequest(formData);
-                setOpen(false);
-              }}
-            >
-              <input type="hidden" name="benefitId" value={benefitId} />
-              <input type="hidden" name="estimatedCashback" value={Math.max(0, Math.round(youEarns)).toString()} />
+            <form onSubmit={handleSubmit}>
               <div className="mb-3 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
                 Benefit: <span className="font-medium">{benefitName}</span>
               </div>
@@ -439,7 +479,6 @@ export const AdoptButton = ({
                   <input
                     type="number"
                     step="1"
-                    name="amountSpent"
                     min={1}
                     required
                     value={amountSpent}
@@ -450,7 +489,6 @@ export const AdoptButton = ({
                 <label className="grid gap-1 text-sm text-slate-600">
                   Purchase channel
                   <select
-                    name="purchaseChannel"
                     required
                     value={purchaseChannel}
                     onChange={(e) => setPurchaseChannel(e.target.value as PurchaseChannel | '')}
@@ -747,11 +785,13 @@ export const AdoptButton = ({
               <div className="flex justify-end">
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
                 >
-                  Submit request
+                  {isSubmitting ? 'Submitting...' : 'Submit request'}
                 </button>
               </div>
+              {submitError && <p className="mt-3 text-sm text-red-600">{submitError}</p>}
             </form>
           </div>
         </div>
