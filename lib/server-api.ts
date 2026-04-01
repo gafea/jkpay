@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers, type ReadonlyHeaders } from 'next/headers';
 import { getAppBaseUrl } from '@/lib/app-url';
 
 export class ApiError extends Error {
@@ -10,19 +10,39 @@ export class ApiError extends Error {
   }
 }
 
-const buildApiUrl = (path: string) => new URL(path, getAppBaseUrl()).toString();
+const buildApiUrl = (path: string, origin: string) => new URL(path, origin).toString();
 
-export const fetchServerApi = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
-  const cookieStore = cookies();
-  const headers = new Headers(options.headers);
-  const cookieHeader = cookieStore.toString();
-  if (cookieHeader) {
-    headers.set('cookie', cookieHeader);
+const resolveRequestOrigin = (headerStore: ReadonlyHeaders) => {
+  const forwardedProto = headerStore.get('x-forwarded-proto');
+  const proto = forwardedProto ? forwardedProto.split(',')[0]?.trim() : '';
+  const forwardedHost = headerStore.get('x-forwarded-host');
+  const host = forwardedHost ?? headerStore.get('host');
+  if (host) {
+    return `${proto || 'http'}://${host}`;
   }
 
-  const response = await fetch(buildApiUrl(path), {
+  return getAppBaseUrl().toString();
+};
+
+export const fetchServerApi = async <T>(path: string, options: RequestInit = {}): Promise<T> => {
+  const headerStore = await headers();
+  const cookieStore = await cookies();
+  const requestHeaders = new Headers(options.headers);
+  const origin = resolveRequestOrigin(headerStore);
+  const rawCookieHeader = headerStore.get('cookie') ?? '';
+  const cookieHeader = rawCookieHeader
+    ? rawCookieHeader
+    : cookieStore
+        .getAll()
+        .map(({ name, value }) => `${name}=${value}`)
+        .join('; ');
+  if (cookieHeader) {
+    requestHeaders.set('cookie', cookieHeader);
+  }
+
+  const response = await fetch(buildApiUrl(path, origin), {
     ...options,
-    headers,
+    headers: requestHeaders,
     cache: 'no-store',
   });
 

@@ -24,8 +24,8 @@ const getEnvFileKeys = () => {
     .filter((key) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key));
 };
 
-export async function GET() {
-  const access = await ensureOwnerAccessApi();
+export async function GET(request: Request) {
+  const access = await ensureOwnerAccessApi(request);
   if (!access.ok) {
     return NextResponse.json({ error: access.reason }, { status: access.status });
   }

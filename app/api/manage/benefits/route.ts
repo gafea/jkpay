@@ -12,7 +12,7 @@ import {
 } from '@/lib/manage-input';
 
 export async function POST(request: Request) {
-  const access = await ensureOwnerAccessApi();
+  const access = await ensureOwnerAccessApi(request);
   if (!access.ok) {
     return NextResponse.json({ error: access.reason }, { status: access.status });
   }
@@ -110,7 +110,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const access = await ensureOwnerAccessApi();
+  const access = await ensureOwnerAccessApi(request);
   if (!access.ok) {
     return NextResponse.json({ error: access.reason }, { status: access.status });
   }

@@ -1,6 +1,6 @@
-import { auth } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import { getFriendAccessStatus, isOwnerEmail } from '@/lib/access';
+import { getToken } from 'next-auth/jwt';
 
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -12,23 +12,41 @@ type ApiUser = {
 
 export type ApiAccessResult = { ok: true; user: ApiUser } | { ok: false; status: number; reason: string };
 
-const getCurrentSessionUserApi = async (): Promise<ApiUser | null> => {
-  const session = await auth();
+type AuthIdentity = {
+  email: string;
+  name: string;
+};
 
-  if (!session?.user?.email) {
+const resolveAuthIdentity = async (request: Request): Promise<AuthIdentity | null> => {
+  const token = await getToken({ req: request, secret: process.env.SESSION_SECRET! });
+  if (!token?.email) {
     return null;
   }
 
-  const normalizedEmail = normalizeEmail(session.user.email);
+  return {
+    email: String(token.email),
+    name: token.name ? String(token.name) : '',
+  };
+};
 
+export const getCurrentSessionUserApi = async (request: Request): Promise<ApiUser | null> => {
+  const identity = await resolveAuthIdentity(request);
+
+  if (!identity?.email) {
+    return null;
+  }
+
+  const normalizedEmail = normalizeEmail(identity.email);
+
+  const normalizedName = identity.name.trim();
   const dbUser = await prisma.user.upsert({
     where: { email: normalizedEmail },
     update: {
-      name: session.user.name ?? null,
+      name: normalizedName || undefined,
     },
     create: {
       email: normalizedEmail,
-      name: session.user.name ?? null,
+      name: normalizedName || null,
     },
     select: { id: true },
   });
@@ -36,12 +54,12 @@ const getCurrentSessionUserApi = async (): Promise<ApiUser | null> => {
   return {
     id: dbUser.id,
     email: normalizedEmail,
-    name: session.user.name ?? '',
+    name: normalizedName,
   };
 };
 
-export const ensureBrowseHistoryAccessApi = async (): Promise<ApiAccessResult> => {
-  const user = await getCurrentSessionUserApi();
+export const ensureBrowseHistoryAccessApi = async (request: Request): Promise<ApiAccessResult> => {
+  const user = await getCurrentSessionUserApi(request);
   if (!user) {
     return { ok: false, status: 401, reason: 'Unauthorized' };
   }
@@ -58,8 +76,8 @@ export const ensureBrowseHistoryAccessApi = async (): Promise<ApiAccessResult> =
   return { ok: true, user };
 };
 
-export const ensureOwnerAccessApi = async (): Promise<ApiAccessResult> => {
-  const user = await getCurrentSessionUserApi();
+export const ensureOwnerAccessApi = async (request: Request): Promise<ApiAccessResult> => {
+  const user = await getCurrentSessionUserApi(request);
   if (!user) {
     return { ok: false, status: 401, reason: 'Unauthorized' };
   }

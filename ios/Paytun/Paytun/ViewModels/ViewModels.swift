@@ -11,6 +11,36 @@ enum AuthStatus {
 final class AuthStore: ObservableObject {
   @Published var status: AuthStatus = .unknown
   @Published var user: SessionUser? = nil
+  @Published var token: String? = nil
+
+  private let tokenKey = "paytun.authToken"
+
+  init() {
+    let storedToken = UserDefaults.standard.string(forKey: tokenKey)
+    token = storedToken
+    APIClient.shared.authToken = storedToken
+  }
+
+  func setToken(_ newValue: String?) {
+    token = newValue
+    APIClient.shared.authToken = newValue
+    if let newValue, !newValue.isEmpty {
+      UserDefaults.standard.set(newValue, forKey: tokenKey)
+    } else {
+      UserDefaults.standard.removeObject(forKey: tokenKey)
+    }
+  }
+
+  func clearToken() {
+    setToken(nil)
+    user = nil
+    status = .unauthenticated
+  }
+
+  func completeMobileSignIn(token: String) async {
+    setToken(token)
+    await refreshSession()
+  }
 
   func refreshSession() async {
     do {
@@ -19,8 +49,7 @@ final class AuthStore: ObservableObject {
       status = .authenticated
     } catch let error as NetworkError {
       if case .httpStatus(let code, _) = error, code == 401 {
-        user = nil
-        status = .unauthenticated
+        clearToken()
       } else {
         user = nil
         status = .unauthenticated

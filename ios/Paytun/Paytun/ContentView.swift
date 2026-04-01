@@ -75,7 +75,8 @@ private struct AccountView: View {
             }
           }
 
-          Button("Sign out in browser") {
+          Button("Sign out") {
+            authStore.clearToken()
             openURL(AppConfig.baseURL.appendingPathComponent("api/auth/signout"))
           }
         }

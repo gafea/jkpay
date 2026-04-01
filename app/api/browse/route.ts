@@ -4,8 +4,8 @@ import { resetMonthlyBenefitUsage } from '@/lib/benefits';
 import { prisma } from '@/lib/prisma';
 import type { ApiBrowseResponse, ApiBenefit } from '@/lib/api-types';
 
-export async function GET() {
-  const access = await ensureBrowseHistoryAccessApi();
+export async function GET(request: Request) {
+  const access = await ensureBrowseHistoryAccessApi(request);
   if (!access.ok) {
     return NextResponse.json({ error: access.reason }, { status: access.status });
   }

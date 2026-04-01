@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { ensureOwnerAccessApi } from '@/lib/access-api';
 
 export async function POST(request: Request) {
-  const access = await ensureOwnerAccessApi();
+  const access = await ensureOwnerAccessApi(request);
   if (!access.ok) {
     return NextResponse.json({ error: access.reason }, { status: access.status });
   }

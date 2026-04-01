@@ -24,6 +24,7 @@ final class APIClient {
   private let session: URLSession
   private let decoder: JSONDecoder
   private let encoder: JSONEncoder
+  var authToken: String? = nil
 
   init(baseURL: URL = AppConfig.baseURL) {
     self.baseURL = baseURL
@@ -57,6 +58,9 @@ final class APIClient {
 
     var request = URLRequest(url: url)
     request.httpMethod = method
+    if let authToken, !authToken.isEmpty {
+      request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+    }
     if let body {
       request.httpBody = body
       request.setValue("application/json", forHTTPHeaderField: "Content-Type")

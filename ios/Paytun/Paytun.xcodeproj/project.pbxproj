@@ -12,37 +12,37 @@
 			containerPortal = 10BC7A5E2F7CE2AE006F3B62 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 10BC7A652F7CE2AE006F3B62;
-			remoteInfo = jkPay;
+			remoteInfo = Paytun;
 		};
 		10BC7A802F7CE2B0006F3B62 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 10BC7A5E2F7CE2AE006F3B62 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 10BC7A652F7CE2AE006F3B62;
-			remoteInfo = jkPay;
+			remoteInfo = Paytun;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		10BC7A662F7CE2AE006F3B62 /* jkPay.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = jkPay.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		10BC7A752F7CE2B0006F3B62 /* jkPayTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = jkPayTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		10BC7A7F2F7CE2B0006F3B62 /* jkPayUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = jkPayUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		10BC7A662F7CE2AE006F3B62 /* Paytun.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Paytun.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		10BC7A752F7CE2B0006F3B62 /* PaytunTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PaytunTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		10BC7A7F2F7CE2B0006F3B62 /* PaytunUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PaytunUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		10BC7A682F7CE2AE006F3B62 /* jkPay */ = {
+		10BC7A682F7CE2AE006F3B62 /* Paytun */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = jkPay;
+			path = Paytun;
 			sourceTree = "<group>";
 		};
-		10BC7A782F7CE2B0006F3B62 /* jkPayTests */ = {
+		10BC7A782F7CE2B0006F3B62 /* PaytunTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = jkPayTests;
+			path = PaytunTests;
 			sourceTree = "<group>";
 		};
-		10BC7A822F7CE2B0006F3B62 /* jkPayUITests */ = {
+		10BC7A822F7CE2B0006F3B62 /* PaytunUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = jkPayUITests;
+			path = PaytunUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +75,9 @@
 		10BC7A5D2F7CE2AE006F3B62 = {
 			isa = PBXGroup;
 			children = (
-				10BC7A682F7CE2AE006F3B62 /* jkPay */,
-				10BC7A782F7CE2B0006F3B62 /* jkPayTests */,
-				10BC7A822F7CE2B0006F3B62 /* jkPayUITests */,
+				10BC7A682F7CE2AE006F3B62 /* Paytun */,
+				10BC7A782F7CE2B0006F3B62 /* PaytunTests */,
+				10BC7A822F7CE2B0006F3B62 /* PaytunUITests */,
 				10BC7A672F7CE2AE006F3B62 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -85,9 +85,9 @@
 		10BC7A672F7CE2AE006F3B62 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				10BC7A662F7CE2AE006F3B62 /* jkPay.app */,
-				10BC7A752F7CE2B0006F3B62 /* jkPayTests.xctest */,
-				10BC7A7F2F7CE2B0006F3B62 /* jkPayUITests.xctest */,
+				10BC7A662F7CE2AE006F3B62 /* Paytun.app */,
+				10BC7A752F7CE2B0006F3B62 /* PaytunTests.xctest */,
+				10BC7A7F2F7CE2B0006F3B62 /* PaytunUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +95,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		10BC7A652F7CE2AE006F3B62 /* jkPay */ = {
+		10BC7A652F7CE2AE006F3B62 /* Paytun */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 10BC7A892F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "jkPay" */;
+			buildConfigurationList = 10BC7A892F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "Paytun" */;
 			buildPhases = (
 				10BC7A622F7CE2AE006F3B62 /* Sources */,
 				10BC7A632F7CE2AE006F3B62 /* Frameworks */,
@@ -108,18 +108,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				10BC7A682F7CE2AE006F3B62 /* jkPay */,
+				10BC7A682F7CE2AE006F3B62 /* Paytun */,
 			);
-			name = jkPay;
+			name = Paytun;
 			packageProductDependencies = (
 			);
-			productName = jkPay;
-			productReference = 10BC7A662F7CE2AE006F3B62 /* jkPay.app */;
+			productName = Paytun;
+			productReference = 10BC7A662F7CE2AE006F3B62 /* Paytun.app */;
 			productType = "com.apple.product-type.application";
 		};
-		10BC7A742F7CE2B0006F3B62 /* jkPayTests */ = {
+		10BC7A742F7CE2B0006F3B62 /* PaytunTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 10BC7A8C2F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "jkPayTests" */;
+			buildConfigurationList = 10BC7A8C2F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "PaytunTests" */;
 			buildPhases = (
 				10BC7A712F7CE2B0006F3B62 /* Sources */,
 				10BC7A722F7CE2B0006F3B62 /* Frameworks */,
@@ -131,18 +131,18 @@
 				10BC7A772F7CE2B0006F3B62 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				10BC7A782F7CE2B0006F3B62 /* jkPayTests */,
+				10BC7A782F7CE2B0006F3B62 /* PaytunTests */,
 			);
-			name = jkPayTests;
+			name = PaytunTests;
 			packageProductDependencies = (
 			);
-			productName = jkPayTests;
-			productReference = 10BC7A752F7CE2B0006F3B62 /* jkPayTests.xctest */;
+			productName = PaytunTests;
+			productReference = 10BC7A752F7CE2B0006F3B62 /* PaytunTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		10BC7A7E2F7CE2B0006F3B62 /* jkPayUITests */ = {
+		10BC7A7E2F7CE2B0006F3B62 /* PaytunUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 10BC7A8F2F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "jkPayUITests" */;
+			buildConfigurationList = 10BC7A8F2F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "PaytunUITests" */;
 			buildPhases = (
 				10BC7A7B2F7CE2B0006F3B62 /* Sources */,
 				10BC7A7C2F7CE2B0006F3B62 /* Frameworks */,
@@ -154,13 +154,13 @@
 				10BC7A812F7CE2B0006F3B62 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				10BC7A822F7CE2B0006F3B62 /* jkPayUITests */,
+				10BC7A822F7CE2B0006F3B62 /* PaytunUITests */,
 			);
-			name = jkPayUITests;
+			name = PaytunUITests;
 			packageProductDependencies = (
 			);
-			productName = jkPayUITests;
-			productReference = 10BC7A7F2F7CE2B0006F3B62 /* jkPayUITests.xctest */;
+			productName = PaytunUITests;
+			productReference = 10BC7A7F2F7CE2B0006F3B62 /* PaytunUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 10BC7A612F7CE2AE006F3B62 /* Build configuration list for PBXProject "jkPay" */;
+			buildConfigurationList = 10BC7A612F7CE2AE006F3B62 /* Build configuration list for PBXProject "Paytun" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -200,9 +200,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				10BC7A652F7CE2AE006F3B62 /* jkPay */,
-				10BC7A742F7CE2B0006F3B62 /* jkPayTests */,
-				10BC7A7E2F7CE2B0006F3B62 /* jkPayUITests */,
+				10BC7A652F7CE2AE006F3B62 /* Paytun */,
+				10BC7A742F7CE2B0006F3B62 /* PaytunTests */,
+				10BC7A7E2F7CE2B0006F3B62 /* PaytunUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,12 +258,12 @@
 /* Begin PBXTargetDependency section */
 		10BC7A772F7CE2B0006F3B62 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 10BC7A652F7CE2AE006F3B62 /* jkPay */;
+			target = 10BC7A652F7CE2AE006F3B62 /* Paytun */;
 			targetProxy = 10BC7A762F7CE2B0006F3B62 /* PBXContainerItemProxy */;
 		};
 		10BC7A812F7CE2B0006F3B62 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 10BC7A652F7CE2AE006F3B62 /* jkPay */;
+			target = 10BC7A652F7CE2AE006F3B62 /* Paytun */;
 			targetProxy = 10BC7A802F7CE2B0006F3B62 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -400,6 +400,13 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleURLSchemes = (
+							paytun,
+						);
+					},
+				);
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -415,7 +422,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.jkPay;
+				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.Paytun;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -447,6 +454,13 @@
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleURLSchemes = (
+							paytun,
+						);
+					},
+				);
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -462,7 +476,7 @@
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.jkPay;
+				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.Paytun;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SDKROOT = auto;
@@ -490,7 +504,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.jkPayTests;
+				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.PaytunTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -500,7 +514,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/jkPay.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/jkPay";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Paytun.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Paytun";
 				XROS_DEPLOYMENT_TARGET = 26.4;
 			};
 			name = Debug;
@@ -516,7 +530,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.jkPayTests;
+				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.PaytunTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -526,7 +540,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/jkPay.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/jkPay";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Paytun.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Paytun";
 				XROS_DEPLOYMENT_TARGET = 26.4;
 			};
 			name = Release;
@@ -541,7 +555,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.jkPayUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.PaytunUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -551,7 +565,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = jkPay;
+				TEST_TARGET_NAME = Paytun;
 				XROS_DEPLOYMENT_TARGET = 26.4;
 			};
 			name = Debug;
@@ -566,7 +580,7 @@
 				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
 				MACOSX_DEPLOYMENT_TARGET = 26.4;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.jkPayUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = net.gafea.PaytunUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
@@ -576,7 +590,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
-				TEST_TARGET_NAME = jkPay;
+				TEST_TARGET_NAME = Paytun;
 				XROS_DEPLOYMENT_TARGET = 26.4;
 			};
 			name = Release;
@@ -584,7 +598,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		10BC7A612F7CE2AE006F3B62 /* Build configuration list for PBXProject "jkPay" */ = {
+		10BC7A612F7CE2AE006F3B62 /* Build configuration list for PBXProject "Paytun" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				10BC7A872F7CE2B0006F3B62 /* Debug */,
@@ -593,7 +607,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		10BC7A892F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "jkPay" */ = {
+		10BC7A892F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "Paytun" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				10BC7A8A2F7CE2B0006F3B62 /* Debug */,
@@ -602,7 +616,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		10BC7A8C2F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "jkPayTests" */ = {
+		10BC7A8C2F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "PaytunTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				10BC7A8D2F7CE2B0006F3B62 /* Debug */,
@@ -611,7 +625,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		10BC7A8F2F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "jkPayUITests" */ = {
+		10BC7A8F2F7CE2B0006F3B62 /* Build configuration list for PBXNativeTarget "PaytunUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				10BC7A902F7CE2B0006F3B62 /* Debug */,
