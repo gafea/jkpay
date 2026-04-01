@@ -1,8 +1,10 @@
 import SwiftUI
 import Combine
+import SafariServices
 
 struct SignInView: View {
-  @Environment(\.openURL) private var openURL
+  @State private var signInURL: URL? = nil
+  @State private var isShowingSignIn = false
   @ObservedObject var authStore: AuthStore
 
   var body: some View {
@@ -16,16 +18,16 @@ struct SignInView: View {
         .padding(.horizontal)
 
       Button("Sign in with Microsoft") {
-        var components = URLComponents(
-          url: AppConfig.baseURL.appendingPathComponent("api/auth/signin"),
-          resolvingAgainstBaseURL: false
-        )
+        var components = URLComponents(url: AppConfig.baseURL, resolvingAgainstBaseURL: false)
+        let browseURL = AppConfig.baseURL.appendingPathComponent("browse").absoluteString
         components?.queryItems = [
-          URLQueryItem(name: "provider", value: "microsoft")
+          URLQueryItem(name: "autoredirect", value: "1"),
+          URLQueryItem(name: "callbackUrl", value: browseURL)
         ]
 
-        if let signInURL = components?.url {
-          openURL(signInURL)
+        if let url = components?.url {
+          signInURL = url
+          isShowingSignIn = true
         }
       }
       .buttonStyle(.borderedProminent)
@@ -44,5 +46,32 @@ struct SignInView: View {
         .padding(.horizontal)
     }
     .padding()
+    .sheet(
+      isPresented: $isShowingSignIn,
+      onDismiss: {
+        Task {
+          await authStore.refreshSession()
+        }
+      }
+    ) {
+      if let signInURL {
+        InAppSafariView(url: signInURL)
+          .ignoresSafeArea()
+      }
+    }
+  }
+}
+
+private struct InAppSafariView: UIViewControllerRepresentable {
+  let url: URL
+
+  func makeUIViewController(context: Context) -> SFSafariViewController {
+    let controller = SFSafariViewController(url: url)
+    controller.dismissButtonStyle = .close
+    return controller
+  }
+
+  func updateUIViewController(_ uiViewController: SFSafariViewController, context: Context) {
+    // No-op: URL is fixed for this presentation.
   }
 }

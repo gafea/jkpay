@@ -3,10 +3,39 @@ import { getAppBaseUrl } from '@/lib/app-url';
 import { getFriendAccessStatus, isOwnerEmail } from '@/lib/access';
 import { redirect } from 'next/navigation';
 
-export default async function HomePage() {
+type HomePageProps = {
+  searchParams?: {
+    autoredirect?: string;
+    callbackUrl?: string;
+  };
+};
+
+export default async function HomePage({ searchParams }: HomePageProps) {
   const session = await auth();
   const appBaseUrl = getAppBaseUrl().toString();
+  const appOrigin = new URL(appBaseUrl).origin;
+  const fallbackCallbackUrl = new URL('/browse', appBaseUrl).toString();
   let accessStatus: 'active' | 'disabled' | 'expired' | 'none' = 'none';
+
+  if (!session?.user?.email && searchParams?.autoredirect === '1') {
+    let callbackUrl = fallbackCallbackUrl;
+
+    if (searchParams.callbackUrl) {
+      try {
+        const candidate = new URL(searchParams.callbackUrl, appBaseUrl);
+        if (candidate.origin === appOrigin) {
+          callbackUrl = candidate.toString();
+        }
+      } catch {
+        callbackUrl = fallbackCallbackUrl;
+      }
+    }
+
+    const signInUrl = new URL('/api/auth/signin', appBaseUrl);
+    signInUrl.searchParams.set('provider', 'microsoft');
+    signInUrl.searchParams.set('callbackUrl', callbackUrl);
+    redirect(signInUrl.toString());
+  }
 
   if (session?.user?.email) {
     const email = session.user.email.toLowerCase();
@@ -30,7 +59,7 @@ export default async function HomePage() {
             action={async () => {
               'use server';
               await signIn('microsoft', {
-                redirectTo: new URL('/browse', appBaseUrl).toString(),
+                redirectTo: fallbackCallbackUrl,
               });
             }}
           >
@@ -61,7 +90,7 @@ export default async function HomePage() {
                 type="submit"
                 className="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-700"
               >
-                Switch account
+                  Sign in with Microsoft (switch account)
               </button>
             </form>
           </div>

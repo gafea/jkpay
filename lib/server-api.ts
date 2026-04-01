@@ -26,10 +26,19 @@ export const fetchServerApi = async <T>(path: string, options: RequestInit = {})
     cache: 'no-store',
   });
 
+  const rawBody = await response.text().catch(() => '');
+
   if (!response.ok) {
-    const message = await response.text().catch(() => '');
-    throw new ApiError(response.status, message || `Request failed with ${response.status}`);
+    throw new ApiError(response.status, rawBody || `Request failed with ${response.status}`);
   }
 
-  return (await response.json()) as T;
+  if (!rawBody) {
+    throw new ApiError(response.status, `Empty response body for ${path}`);
+  }
+
+  try {
+    return JSON.parse(rawBody) as T;
+  } catch {
+    throw new ApiError(response.status, `Expected JSON response from ${path}`);
+  }
 };
