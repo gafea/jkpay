@@ -90,11 +90,11 @@ const toFormData = (pairs: Array<[string, string | string[] | boolean]>) => {
 
 // ─── Shared cell / input styles ───────────────────────────────────────────────
 
-const cellCls = 'border-r border-slate-100 last:border-r-0 p-0';
+const cellCls = 'border-r border-slate-100 last:border-r-0 px-2 py-1.5 align-middle';
 const inputCls =
-  'w-full h-full bg-transparent px-2 py-1.5 text-sm text-slate-800 placeholder:text-slate-300 outline-none focus:bg-indigo-50/40 focus:ring-1 focus:ring-inset focus:ring-indigo-300 transition-colors';
+  'w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-300 outline-none focus:bg-indigo-50/40 focus:ring-1 focus:ring-inset focus:ring-indigo-300 transition-colors';
 const selectCls =
-  'w-full h-full bg-transparent px-2 py-1.5 text-sm text-slate-800 outline-none focus:bg-indigo-50/40 focus:ring-1 focus:ring-inset focus:ring-indigo-300 transition-colors cursor-pointer';
+  'w-full bg-transparent text-sm text-slate-800 outline-none focus:bg-indigo-50/40 focus:ring-1 focus:ring-inset focus:ring-indigo-300 transition-colors cursor-pointer';
 const thCls =
   'border-r border-slate-200 bg-slate-50 px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 last:border-r-0 whitespace-nowrap';
 
@@ -269,7 +269,7 @@ function MultiSelectPopup({
         ref={ref}
         type="button"
         onClick={toggleOpen}
-        className="flex w-full items-center justify-between gap-1 bg-transparent px-2 py-1.5 text-left text-sm text-slate-800 transition-colors hover:bg-indigo-50/40 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-indigo-300"
+        className="flex w-full items-center justify-between gap-1 bg-transparent text-left text-sm text-slate-800 transition-colors hover:bg-indigo-50/40 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-indigo-300"
       >
         <span className={`truncate ${selected.length === 0 ? 'text-slate-300 text-xs' : 'text-sm'}`}>
           {selected.length ? selected.join(', ') : placeholder}
@@ -378,7 +378,7 @@ function CardSelector({
           const cardId = e.dataTransfer.getData('cardId');
           if (cardId && !selectedIds.includes(cardId)) onChange([...selectedIds, cardId]);
         }}
-        className={`flex w-full items-center justify-between gap-1 px-2 py-1.5 text-left text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-inset focus:ring-indigo-300 ${
+        className={`flex w-full items-center justify-between gap-1 text-left text-sm transition-colors focus:outline-none focus:ring-1 focus:ring-inset focus:ring-indigo-300 ${
           isDragOver ? 'bg-indigo-100 ring-1 ring-inset ring-indigo-400' : 'bg-transparent hover:bg-indigo-50/40'
         }`}
       >
@@ -1049,7 +1049,7 @@ export const ManageGrid = ({
                       />
                     </td>
                     <td className={cellCls}>
-                      <div className="flex h-full min-w-[70px] items-center text-center px-3 text-slate-500">
+                      <div className="flex h-full min-w-[70px] items-center text-center text-slate-500">
                         {quotaRemaining(row)}
                       </div>
                     </td>

@@ -11,16 +11,15 @@
     "test:watch": "vitest",
     "format": "prettier --single-quote true --print-width 120 --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "postinstall": "prisma generate",
-    "db:setup": "prisma migrate dev",
-    "ncu": "npm-check-updates --reject @prisma/client,prisma,eslint",
-    "ncu:upgrade": "npm-check-updates -u --reject @prisma/client,prisma,eslint"
+    "db:setup": "prisma migrate dev"
   },
   "dependencies": {
     "@auth/core": "^0.41.1",
-    "@prisma/client": "^6.19.0",
+    "@prisma/adapter-pg": "^7.6.0",
+    "@prisma/client": "^7.6.0",
     "dotenv": "^17.3.1",
     "lucide-react": "^1.7.0",
-    "next": "^16.2.1",
+    "next": "^16.2.2",
     "next-auth": "^5.0.0-beta.29",
     "pg": "^8.20.0",
     "react": "19.2.4",
@@ -35,14 +34,14 @@
     "@types/node": "25.5.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "baseline-browser-mapping": "^2.10.11",
+    "baseline-browser-mapping": "^2.10.13",
     "eslint": "^9.39.4",
-    "eslint-config-next": "16.2.1",
+    "eslint-config-next": "16.2.2",
     "jsdom": "^29.0.1",
     "prettier": "^3.8.1",
-    "prisma": "^6.19.2",
+    "prisma": "^7.6.0",
     "tailwindcss": "^4.2.2",
-    "typescript": "5.9.3",
+    "typescript": "6.0.2",
     "vitest": "^4.1.2"
   }
 }
