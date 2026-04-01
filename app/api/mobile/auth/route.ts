@@ -20,9 +20,9 @@ export async function GET(request: Request) {
   const token = await getToken({ req: request, secret: process.env.SESSION_SECRET!, secureCookie });
   if (!token?.email) {
     const appBaseUrl = getAppBaseUrl();
-    const signInUrl = new URL('/api/auth/signin', appBaseUrl);
-    signInUrl.searchParams.set('provider', 'microsoft');
+    const signInUrl = new URL('/', appBaseUrl);
     const callbackUrl = new URL('/api/mobile/auth', appBaseUrl);
+    signInUrl.searchParams.set('autoredirect', '1');
     signInUrl.searchParams.set('callbackUrl', callbackUrl.toString());
     return NextResponse.redirect(signInUrl);
   }

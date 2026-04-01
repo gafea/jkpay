@@ -24,25 +24,18 @@ struct SignInView: View {
         startSignIn()
       }
       .buttonStyle(.borderedProminent)
-
-      Button("Refresh session") {
-        Task {
-          await authStore.refreshSession()
-        }
-      }
-      .buttonStyle(.bordered)
-
-      Text("Complete sign-in in the browser to return here automatically.")
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-        .multilineTextAlignment(.center)
-        .padding(.horizontal)
     }
     .padding()
   }
 
   private func startSignIn() {
-    let signInURL = AppConfig.baseURL.appendingPathComponent("api/mobile/auth")
+    let callbackUrl = AppConfig.baseURL.appendingPathComponent("api/mobile/auth")
+    var components = URLComponents(url: AppConfig.baseURL, resolvingAgainstBaseURL: false)
+    components?.queryItems = [
+      URLQueryItem(name: "autoredirect", value: "1"),
+      URLQueryItem(name: "callbackUrl", value: callbackUrl.absoluteString),
+    ]
+    let signInURL = components?.url ?? callbackUrl
     let session = ASWebAuthenticationSession(
       url: signInURL,
       callbackURLScheme: AppConfig.authCallbackScheme
