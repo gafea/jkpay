@@ -16,20 +16,23 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const appBaseUrl = getAppBaseUrl().toString();
   const appOrigin = new URL(appBaseUrl).origin;
   const fallbackCallbackUrl = new URL('/browse', appBaseUrl).toString();
+  let callbackUrl = fallbackCallbackUrl;
   let accessStatus: 'active' | 'disabled' | 'expired' | 'none' = 'none';
 
-  if (!session?.user?.email && resolvedSearchParams.autoredirect === '1') {
-    let callbackUrl = fallbackCallbackUrl;
-
-    if (resolvedSearchParams.callbackUrl) {
-      try {
-        const candidate = new URL(resolvedSearchParams.callbackUrl, appBaseUrl);
-        if (candidate.origin === appOrigin) {
-          callbackUrl = candidate.toString();
-        }
-      } catch {
-        callbackUrl = fallbackCallbackUrl;
+  if (resolvedSearchParams.callbackUrl) {
+    try {
+      const candidate = new URL(resolvedSearchParams.callbackUrl, appBaseUrl);
+      if (candidate.origin === appOrigin) {
+        callbackUrl = candidate.toString();
       }
+    } catch {
+      callbackUrl = fallbackCallbackUrl;
+    }
+  }
+
+  if (resolvedSearchParams.autoredirect === '1') {
+    if (session?.user?.email) {
+      redirect(callbackUrl);
     }
 
     const signInUrl = new URL('/api/auth/signin', appBaseUrl);

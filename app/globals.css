@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@source './**/*.{ts,tsx,mdx}';
+@source '../components/**/*.{ts,tsx,mdx}';
+@source '../lib/**/*.{ts,tsx,mdx}';
 
 @layer base {
   body {
