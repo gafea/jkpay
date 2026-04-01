@@ -134,8 +134,12 @@ private struct RequestSheet: View {
         }
 
         Section("Request") {
+          #if os(iOS)
           TextField("Amount spent", text: $amountSpent)
             .keyboardType(.decimalPad)
+          #else
+          TextField("Amount spent", text: $amountSpent)
+          #endif
 
           if benefit.purchaseChannel == nil {
             Picker("Purchase channel", selection: $purchaseChannel) {
