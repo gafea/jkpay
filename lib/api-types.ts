@@ -14,7 +14,8 @@ export type ApiBenefitCardLink = {
 
 export type ApiBenefit = {
   id: string;
-  categoryName: string;
+  categoryTags: string[];
+  referenceUrl: string | null;
   expiryDate: string | null;
   cashbackType: CashbackType;
   cashbackAmount: number;
@@ -66,7 +67,8 @@ export type ApiManageCard = {
 
 export type ApiManageBenefit = {
   id: string;
-  categoryName: string;
+  categoryTags: string[];
+  referenceUrl: string;
   expiryDate: string;
   cashbackType: CashbackType;
   cashbackAmount: string;

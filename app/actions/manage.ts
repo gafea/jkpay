@@ -159,7 +159,11 @@ export const removeCard = async (formData: FormData) => {
 export const saveBenefit = async (formData: FormData) => {
   await ensureOwnerAccess();
   const id = String(formData.get('id') ?? '').trim();
-  const categoryName = String(formData.get('categoryName') ?? '').trim();
+  const rawTags = formData.getAll('categoryTags').map((value) => String(value).trim());
+  const fallbackCategoryName = String(formData.get('categoryName') ?? '').trim();
+  const categoryTags =
+    rawTags.length > 0 ? rawTags.filter(Boolean) : fallbackCategoryName ? [fallbackCategoryName] : [];
+  const referenceUrl = String(formData.get('referenceUrl') ?? '').trim();
   const expiryDate = toDate(formData.get('expiryDate'));
   const cashbackType = String(formData.get('cashbackType') ?? '') as CashbackType;
   const cashbackAmount = toDecimal(formData.get('cashbackAmount'));
@@ -173,8 +177,8 @@ export const saveBenefit = async (formData: FormData) => {
   const purchaseChannel = purchaseChannelValue ? (purchaseChannelValue as PurchaseChannel) : null;
   const linkedCardIds = formData.getAll('linkedCardIds').map((value) => String(value));
 
-  if (!categoryName || !cashbackType || cashbackAmount === null) {
-    throw new Error('Category name, type and cashback amount are required');
+  if (categoryTags.length === 0 || !cashbackType || cashbackAmount === null) {
+    throw new Error('Category tags, type and cashback amount are required');
   }
 
   let recordId = id;
@@ -182,7 +186,8 @@ export const saveBenefit = async (formData: FormData) => {
     await prisma.benefit.update({
       where: { id },
       data: {
-        categoryName,
+        categoryTags,
+        referenceUrl: referenceUrl || null,
         expiryDate,
         cashbackType,
         cashbackAmount,
@@ -204,7 +209,8 @@ export const saveBenefit = async (formData: FormData) => {
   } else {
     const created = await prisma.benefit.create({
       data: {
-        categoryName,
+        categoryTags,
+        referenceUrl: referenceUrl || null,
         expiryDate,
         cashbackType,
         cashbackAmount,

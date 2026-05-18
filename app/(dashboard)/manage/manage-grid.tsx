@@ -3,10 +3,28 @@
 import type { BenefitForm, Card, Friend, ManageGridProps, PurchaseChannel, Row, Weekday } from '@/app/types';
 import { Trash2, GripVertical, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
 const createKey = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const normalizeTag = (value: string) => value.trim().replace(/\s+/g, ' ');
+
+const dedupeTags = (tags: string[]) => {
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+
+  for (const tag of tags) {
+    const normalized = normalizeTag(tag);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(normalized);
+  }
+
+  return cleaned;
+};
 
 type FriendInput = Friend;
 type CardInput = Omit<Card, 'fcyFee'> & { fcyFee: string };
@@ -36,7 +54,8 @@ const blankCard = (): Row<CardInput> => ({
 const blankBenefit = (): Row<BenefitInput> => ({
   _key: createKey(),
   id: '',
-  categoryName: '',
+  categoryTags: [],
+  referenceUrl: '',
   expiryDate: '',
   cashbackType: 'PERCENTAGE',
   cashbackAmount: '',
@@ -55,7 +74,8 @@ const hasFriendData = (row: FriendInput) => row.email.trim() !== '';
 
 const hasCardData = (row: CardInput) => row.name.trim() !== '';
 
-const hasBenefitData = (row: BenefitInput) => row.categoryName.trim() !== '' || row.cashbackAmount.trim() !== '';
+const hasBenefitData = (row: BenefitInput) =>
+  row.categoryTags.length > 0 || row.cashbackAmount.trim() !== '' || row.referenceUrl.trim() !== '';
 
 const isBenefitExpired = (dateStr: string) => {
   if (!dateStr) return false;
@@ -289,6 +309,116 @@ function MultiSelectPopup({
   );
 }
 
+// ─── Tag input with suggestions ─────────────────────────────────────────────
+
+function TagInput({
+  value,
+  suggestions,
+  onChange,
+  placeholder = 'Add tag…',
+}: {
+  value: string[];
+  suggestions: string[];
+  onChange: (next: string[]) => void;
+  placeholder?: string;
+}) {
+  const [draft, setDraft] = useState('');
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const addTag = (tag: string) => {
+    const normalized = normalizeTag(tag);
+    if (!normalized) return;
+    const next = dedupeTags([...value, normalized]);
+    if (next.length !== value.length) {
+      onChange(next);
+    }
+    setDraft('');
+    setOpen(false);
+  };
+
+  const removeTag = (tag: string) => {
+    onChange(value.filter((item) => item !== tag));
+  };
+
+  const filtered = suggestions
+    .filter((tag) => tag.toLowerCase().includes(draft.trim().toLowerCase()))
+    .filter((tag) => !value.some((item) => item.toLowerCase() === tag.toLowerCase()))
+    .slice(0, 8);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addTag(draft);
+      return;
+    }
+    if (e.key === 'Backspace' && draft.length === 0 && value.length > 0) {
+      removeTag(value[value.length - 1]);
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative min-w-[180px]">
+      <div className="flex min-h-[34px] flex-wrap items-center gap-1 rounded-md px-2 py-1 transition-colors focus-within:bg-indigo-50/40 focus-within:ring-1 focus-within:ring-inset focus-within:ring-indigo-300">
+        {value.map((tag) => (
+          <span
+            key={tag}
+            className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-700"
+          >
+            {tag}
+            <button
+              type="button"
+              onClick={() => removeTag(tag)}
+              className="text-indigo-400 hover:text-indigo-700"
+              aria-label={`Remove ${tag}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          value={draft}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={handleKeyDown}
+          placeholder={value.length === 0 ? placeholder : ''}
+          className={`${inputCls} min-w-[80px] flex-1 !bg-transparent !p-0`}
+        />
+      </div>
+      {open && filtered.length > 0 && (
+        <div className="absolute z-20 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+          {filtered.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                addTag(tag);
+              }}
+              className="w-full px-3 py-2 text-left text-xs text-slate-700 hover:bg-indigo-50"
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Card selector (popup + drag-drop target) ─────────────────────────────────
 
 function CardSelector({
@@ -424,6 +554,11 @@ export const ManageGrid = ({
   const [savedServerVarCards, setSavedServerVarCards] = useState(serverVariables);
   const showServerVariables = serverVarCards.length > 0;
 
+  const tagSuggestions = useMemo(() => {
+    const tags = benefitRows.flatMap((row) => row.categoryTags);
+    return dedupeTags(tags).sort((a, b) => a.localeCompare(b));
+  }, [benefitRows]);
+
   const apiRequest = useCallback(async <T,>(path: string, options: RequestInit = {}) => {
     const response = await fetch(path, {
       ...options,
@@ -552,14 +687,15 @@ export const ManageGrid = ({
 
   const saveBenefitRow = useCallback(
     async (row: Row<BenefitInput>) => {
-      if (!row.categoryName.trim() || !row.cashbackType || !row.cashbackAmount.trim()) return;
+      if (row.categoryTags.length === 0 || !row.cashbackType || !row.cashbackAmount.trim()) return;
       setBusyKey(`benefit-save-${row._key}`);
       try {
         const res = await apiRequest<{ id: string }>('/api/manage/benefits', {
           method: 'POST',
           body: JSON.stringify({
             id: row.id,
-            categoryName: row.categoryName,
+            categoryTags: row.categoryTags,
+            referenceUrl: row.referenceUrl,
             expiryDate: row.expiryDate,
             cashbackType: row.cashbackType,
             cashbackAmount: row.cashbackAmount,
@@ -962,12 +1098,13 @@ export const ManageGrid = ({
           </div>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-[1300px] border-collapse text-sm">
+          <table className="min-w-[1500px] border-collapse text-sm">
             <thead>
               <tr className="border-b border-slate-200">
                 <th className={thCls}>
-                  Category <Req />
+                  Tags <Req />
                 </th>
+                <th className={thCls}>Reference</th>
                 <th className={thCls}>Expiry</th>
                 <th className={thCls}>
                   Type <Req />
@@ -994,15 +1131,28 @@ export const ManageGrid = ({
                 .map(({ row, index }) => (
                   <tr key={row._key} className="group hover:bg-slate-50/60">
                     <td className={cellCls}>
-                      <input
-                        value={row.categoryName}
-                        onChange={(e) =>
+                      <TagInput
+                        value={row.categoryTags}
+                        suggestions={tagSuggestions}
+                        onChange={(tags) =>
                           onBenefitChange(index, {
-                            categoryName: e.target.value,
+                            categoryTags: tags,
                           })
                         }
-                        placeholder="Category"
-                        className={`${inputCls} min-w-[120px]`}
+                        placeholder="Add tag"
+                      />
+                    </td>
+                    <td className={`${cellCls} min-w-[170px]`}>
+                      <input
+                        type="url"
+                        value={row.referenceUrl}
+                        onChange={(e) =>
+                          onBenefitChange(index, {
+                            referenceUrl: e.target.value,
+                          })
+                        }
+                        placeholder="https://"
+                        className={`${inputCls} min-w-[160px]`}
                       />
                     </td>
                     <td className={cellCls}>
@@ -1181,7 +1331,7 @@ export const ManageGrid = ({
         </div>
         {showExpiredBenefits && (
           <div className="overflow-x-auto border-t border-slate-200 bg-white">
-            <table className="min-w-[1300px] border-collapse text-sm">
+            <table className="min-w-[1500px] border-collapse text-sm">
               <tbody className="divide-y divide-slate-100">
                 {benefitRows
                   .map((row, index) => ({ row, index }))
@@ -1192,15 +1342,28 @@ export const ManageGrid = ({
                       className="group hover:bg-slate-50/60 opacity-60 hover:opacity-100 transition-opacity"
                     >
                       <td className={cellCls}>
-                        <input
-                          value={row.categoryName}
-                          onChange={(e) =>
+                        <TagInput
+                          value={row.categoryTags}
+                          suggestions={tagSuggestions}
+                          onChange={(tags) =>
                             onBenefitChange(index, {
-                              categoryName: e.target.value,
+                              categoryTags: tags,
                             })
                           }
-                          placeholder="Category"
-                          className={`${inputCls} min-w-[120px]`}
+                          placeholder="Add tag"
+                        />
+                      </td>
+                      <td className={`${cellCls} min-w-[170px]`}>
+                        <input
+                          type="url"
+                          value={row.referenceUrl}
+                          onChange={(e) =>
+                            onBenefitChange(index, {
+                              referenceUrl: e.target.value,
+                            })
+                          }
+                          placeholder="https://"
+                          className={`${inputCls} min-w-[160px]`}
                         />
                       </td>
                       <td className={cellCls}>

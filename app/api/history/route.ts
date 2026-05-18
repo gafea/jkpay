@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 
   const requests = await prisma.benefitRequest.findMany({
     where: { userId: access.user.id },
-    include: { benefit: { select: { categoryName: true } } },
+    include: { benefit: { select: { categoryTags: true } } },
     orderBy: { createdAt: 'desc' },
   });
 
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       id: request.id,
       createdAt: request.createdAt.toISOString(),
       benefitId: request.benefitId,
-      benefitName: request.benefit.categoryName,
+      benefitName: request.benefit.categoryTags.length ? request.benefit.categoryTags.join(', ') : 'Uncategorized',
       amountSpent: Number(request.amountSpent),
       purchaseChannel: request.purchaseChannel,
       status: request.status,

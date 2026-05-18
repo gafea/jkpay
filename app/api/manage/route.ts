@@ -24,7 +24,7 @@ const getEnvFileKeys = () => {
     .filter((key) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(key));
 };
 
-  const isServerVariablesEnabled = () => process.env.ALLOW_SERVER_VARIABLES?.toLowerCase() === 'true';
+const isServerVariablesEnabled = () => process.env.ALLOW_SERVER_VARIABLES?.toLowerCase() === 'true';
 
 export async function GET(request: Request) {
   const access = await ensureOwnerAccessApi(request);
@@ -87,7 +87,8 @@ export async function GET(request: Request) {
     })),
     benefits: benefits.map((benefit) => ({
       id: benefit.id,
-      categoryName: benefit.categoryName,
+      categoryTags: benefit.categoryTags,
+      referenceUrl: benefit.referenceUrl ?? '',
       expiryDate: benefit.expiryDate?.toISOString().slice(0, 10) ?? '',
       cashbackType: benefit.cashbackType,
       cashbackAmount: benefit.cashbackAmount.toString(),

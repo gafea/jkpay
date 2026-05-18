@@ -45,7 +45,8 @@ export type BenefitCardLink = {
 
 export type Benefit = {
   id: string;
-  categoryName: string;
+  categoryTags: string[];
+  referenceUrl: string | null;
   expiryDate: Date | null;
   cashbackType: CashbackType;
   cashbackAmount: number;
@@ -62,7 +63,8 @@ export type Benefit = {
 
 export type BenefitForm = {
   id: string;
-  categoryName: string;
+  categoryTags: string[];
+  referenceUrl: string;
   expiryDate: string;
   cashbackType: CashbackType;
   cashbackAmount: string;
@@ -219,5 +221,5 @@ export type BenefitManageRow = Prisma.BenefitGetPayload<{
 }>;
 
 export type BenefitRequestHistoryRow = Prisma.BenefitRequestGetPayload<{
-  include: { benefit: { select: { categoryName: true } } };
+  include: { benefit: { select: { categoryTags: true } } };
 }>;

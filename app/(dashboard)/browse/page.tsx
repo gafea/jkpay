@@ -40,18 +40,34 @@ export default async function BrowsePage() {
     return null;
   };
 
+  const getBenefitTags = (benefit: Benefit) => {
+    const normalized = benefit.categoryTags.map((tag) => tag.trim()).filter(Boolean);
+    if (normalized.length === 0) return ['Uncategorized'];
+    return Array.from(new Set(normalized));
+  };
+
+  const getBenefitLabel = (benefit: Benefit) => getBenefitTags(benefit).join(', ');
+
   const benefitsByCategory = benefits.reduce(
     (acc: Record<string, Benefit[]>, benefit: Benefit) => {
-      const cat = benefit.categoryName || 'Uncategorized';
-      if (!acc[cat]) acc[cat] = [];
-      acc[cat].push(benefit);
+      const tags = getBenefitTags(benefit);
+      for (const tag of tags) {
+        if (!acc[tag]) acc[tag] = [];
+        acc[tag].push(benefit);
+      }
       return acc;
     },
     {} as Record<string, Benefit[]>,
   );
 
   // Sort categories alphabetically
-  const categories = Object.keys(benefitsByCategory).sort();
+  const categories = Object.keys(benefitsByCategory).sort((left, right) => {
+    if (left === 'Any') return -1;
+    if (right === 'Any') return 1;
+    if (left === 'Uncategorized') return 1;
+    if (right === 'Uncategorized') return -1;
+    return left.localeCompare(right);
+  });
 
   for (const cat of categories) {
     benefitsByCategory[cat].sort((a: Benefit, b: Benefit) => {
@@ -62,7 +78,7 @@ export default async function BrowsePage() {
   }
 
   const anyBenefitOptions: AnyBenefitOption[] = (benefitsByCategory['Any'] || []).map((benefit) => ({
-    benefitName: benefit.categoryName,
+    benefitName: getBenefitLabel(benefit),
     cashbackType: benefit.cashbackType,
     cashbackAmount: benefit.cashbackAmount,
     quotaType: benefit.quotaType,
@@ -207,7 +223,7 @@ export default async function BrowsePage() {
             <div className="pt-1">
               <AdoptButton
                 benefitId={b.benefitId}
-                benefitName={b.categoryName}
+                benefitName={getBenefitLabel(b)}
                 cashbackType={b.cashbackType}
                 cashbackAmount={b.cashbackAmount}
                 quotaType={b.quotaType}
@@ -297,6 +313,16 @@ export default async function BrowsePage() {
                           Cashback
                         </span>
                       </div>
+                      <div className="flex flex-wrap gap-1">
+                        {getBenefitTags(benefit).map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-600"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
                       {benefit.purchaseChannel && (
                         <div
                           className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -370,11 +396,25 @@ export default async function BrowsePage() {
                         </div>
                       )}
 
+                      {benefit.referenceUrl && (
+                        <div className="flex gap-2">
+                          <span className="font-medium text-slate-900 min-w-[70px]">Reference:</span>
+                          <a
+                            href={benefit.referenceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 hover:underline break-all"
+                          >
+                            {benefit.referenceUrl}
+                          </a>
+                        </div>
+                      )}
+
                       {category !== 'Any' && (
                         <div className="pt-2">
                           <AdoptButton
                             benefitId={benefit.id}
-                            benefitName={benefit.categoryName}
+                            benefitName={getBenefitLabel(benefit)}
                             cashbackType={benefit.cashbackType}
                             cashbackAmount={benefit.cashbackAmount}
                             quotaType={benefit.quotaType}
@@ -388,7 +428,7 @@ export default async function BrowsePage() {
                               isCredit: link.card.isCredit,
                             }))}
                             sameTypeBenefitOptions={benefitsByCategory[category].map((typeBenefit) => ({
-                              benefitName: typeBenefit.categoryName,
+                              benefitName: getBenefitLabel(typeBenefit),
                               cashbackType: typeBenefit.cashbackType,
                               cashbackAmount: typeBenefit.cashbackAmount,
                               quotaType: typeBenefit.quotaType,

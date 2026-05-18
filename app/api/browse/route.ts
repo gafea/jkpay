@@ -27,7 +27,8 @@ export async function GET(request: Request) {
 
   const benefits: ApiBenefit[] = dbBenefits.map((benefit) => ({
     id: benefit.id,
-    categoryName: benefit.categoryName,
+    categoryTags: benefit.categoryTags,
+    referenceUrl: benefit.referenceUrl ?? null,
     expiryDate: benefit.expiryDate ? benefit.expiryDate.toISOString() : null,
     cashbackType: benefit.cashbackType,
     cashbackAmount: Number(benefit.cashbackAmount),

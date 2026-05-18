@@ -9,6 +9,7 @@ import {
   parseOptionalInt,
   parseOptionalNumber,
   parseString,
+  parseStringArray,
 } from '@/lib/manage-input';
 
 export async function POST(request: Request) {
@@ -19,7 +20,8 @@ export async function POST(request: Request) {
 
   const payload = (await request.json().catch(() => null)) as {
     id?: string;
-    categoryName?: string;
+    categoryTags?: string[];
+    referenceUrl?: string;
     expiryDate?: string;
     cashbackType?: CashbackType;
     cashbackAmount?: number | string;
@@ -34,7 +36,8 @@ export async function POST(request: Request) {
   } | null;
 
   const id = parseString(payload?.id ?? '');
-  const categoryName = parseString(payload?.categoryName ?? '');
+  const categoryTags = parseStringArray(payload?.categoryTags ?? []);
+  const referenceUrl = parseString(payload?.referenceUrl ?? '');
   const expiryDate = parseOptionalDate(payload?.expiryDate ?? '');
   const cashbackType = String(payload?.cashbackType ?? '') as CashbackType;
   const cashbackAmount = parseOptionalNumber(payload?.cashbackAmount ?? '');
@@ -52,8 +55,8 @@ export async function POST(request: Request) {
     ? payload?.linkedCardIds.map((value) => String(value))
     : [];
 
-  if (!categoryName || !cashbackType || cashbackAmount === null) {
-    return NextResponse.json({ error: 'Category name, type and cashback amount are required' }, { status: 400 });
+  if (categoryTags.length === 0 || !cashbackType || cashbackAmount === null) {
+    return NextResponse.json({ error: 'Category tags, type and cashback amount are required' }, { status: 400 });
   }
 
   let recordId = id;
@@ -61,7 +64,8 @@ export async function POST(request: Request) {
     await prisma.benefit.update({
       where: { id },
       data: {
-        categoryName,
+        categoryTags,
+        referenceUrl: referenceUrl || null,
         expiryDate,
         cashbackType,
         cashbackAmount,
@@ -83,7 +87,8 @@ export async function POST(request: Request) {
   } else {
     const created = await prisma.benefit.create({
       data: {
-        categoryName,
+        categoryTags,
+        referenceUrl: referenceUrl || null,
         expiryDate,
         cashbackType,
         cashbackAmount,

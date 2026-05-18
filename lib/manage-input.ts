@@ -34,3 +34,22 @@ export const parseOptionalDate = (value: unknown) => {
 };
 
 export const parseBoolean = (value: unknown) => value === true || value === 'true' || value === 1 || value === '1';
+
+export const parseStringArray = (value: unknown) => {
+  const rawList = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [];
+  const seen = new Set<string>();
+  const cleaned: string[] = [];
+
+  for (const item of rawList) {
+    const normalized = String(item ?? '')
+      .trim()
+      .replace(/\s+/g, ' ');
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cleaned.push(normalized);
+  }
+
+  return cleaned;
+};
